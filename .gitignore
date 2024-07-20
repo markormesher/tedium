@@ -1,0 +1,4 @@
+build/
+
+# keep config private
+config.json
