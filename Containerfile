@@ -22,4 +22,4 @@ RUN apt update \
 
 COPY --from=builder /app/build /app
 
-CMD ["/app/tedium"]
+CMD ["/app/tedium", "--config", "/tedium/config.json"]
