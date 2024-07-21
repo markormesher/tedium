@@ -6,19 +6,26 @@ Tedium is a tool to automate the execution of boring or repetitive tasks, called
 
 ## 💻 Usage
 
-The default way to run Tedium is via its container image. The default container command expects a [config file](#-configuration) at `/tedium/config.json` but this can be overridden by specifying your own command.
+The best way to run Tedium is via its container image. The default container command expects a [config file](#-configuration) at `/tedium/config.yml` but this can be overridden by specifying your own command.
 
-You can run the container locally, in an orchestration tool like Kubernetes, or in any other way you prefet. For example, to run Tedium locally on your machine, use the following (replace `podman` with `docker` if required):
+You can run the container locally, in an orchestration tool like Kubernetes, or in any other way you prefer. For example, to run Tedium locally on your machine, use the following:
 
-`podman run -it --rm -v ./config.json:/tedium/config.json ghcr.io/markormesher/tedium:latest`
+```shell
+# replace `podman` with `docker` if required
+podman run -it --rm -v ./config.json:/tedium/config.json ghcr.io/markormesher/tedium:latest
+```
 
 Alternatively, you can run Tedium from the executable:
 
-`./tedium --config config.json`
+```shell
+./tedium --config config.yml
+```
 
 Or from directly from source:
 
-`go run -tags remote ./cmd/tedium.go --config ./config.json`
+```shell
+go run -tags remote ./cmd/tedium.go --config ./config.yml
+```
 
 ## 📖 Concepts
 
@@ -32,7 +39,7 @@ Running chores is the entire point of Tedium, so see [Chores](#-chores) below fo
 
 ### Executors
 
-Tedium itself doesn't actually execute the steps within chores: it uses container orchestrators as executors to do the work.
+Executors are the container orchestrators that Tedium uses to run your chores - it doesn't actually do any of the execution itself.
 
 The primary executor is Kubernetes, as Tedium is designed to run on a regular cadence with something like a [Kubernetes CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs), but Podman is also supported for local execution.
 
@@ -52,9 +59,9 @@ TODO
 
 ### Repo Config Inheritance
 
-Repo configuration can extend one or more other configurations, allowing a common list of chores to easily be applied across many repos. Each inherited configuration is defined as a simple repo URL; the config is expected to live at `index.{json,yml,yaml}` inside that repo.
+Repo configuration can extend one or more other configurations, allowing a common list of chores to easily be applied across many repos. Each inherited configuration is defined as a simple repo URL; the config is expected to live at `index.{yml,yaml,json}` inside that repo.
 
-The list of chores to apply is merged from all extended configurations. Extension is recursive, but recursion will safely abort if a loop is detected.
+The list of chores to apply is merged from all extended configurations. Extension is recursive and will safely abort if a loop is detected.
 
 ## 🔧 Configuration
 
@@ -63,11 +70,9 @@ Tedium is configured in two place:
 - **Runtime configuration:** the configuration file passed to the Tedium executable when it runs.
 - **Repo configuration:** a configuration file inside each repo.
 
-Additionally, chores need to be defined in order for Tedium to do anything useful - see [Chores](#-chores) below.
-
 ### Runtime Configuration
 
-Runtime configuration is provided to Tedium on the command line when it is executed (see [Usage](#-usage)) to control how the program should run. It can be provided as JSON or YAML.
+Runtime configuration is provided to Tedium on the command line when it is executed (see [Usage](#-usage)) to control how the program should run. It can be provided as YAML or JSON.
 
 The full schema of runtime configuration is defined in [schema/config.go](./internal/schema/config.go) as `TediumConfig`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
 
@@ -116,20 +121,21 @@ platforms:
     auth:
       token: "abc123"
 
-# Per-domain configuration of platform authentication. Keys must be domains.
-# Used when discovering repos and any time repos are cloned (chores, extended configs, etc).
+# Per-domain platform authentication.
+# Used for all communication with matching platforms, including API requests and Git push/pull.
 # Optional.
 auth:
 
+  # Keys must be plain domains.
   gitea.example.com:
     # Token auth is the only supported mechanism at the moment.
     token: "abc123"
 
-# Location on disk to store repos that are cloned (target repos, chores, extended configs, etc).
+# Location on disk to store all repos that are cloned (target repos, chores, extended configs, etc).
 # Optional, defaults to a temporary path.
 repoStoragePath: "/tmp/tedium"
 
-# Container images used for in-built stages of chores.
+# Container images used for built-in chore steps.
 # Optional.
 images:
 
@@ -160,7 +166,7 @@ autoEnrollment:
 
 ### Repo Configuration
 
-Repo configuration is committed to the repo and defines how Tedium should handle that repo after it has been discovered from a platform. It must be in the root directory of the repo and named `.tedium.{json,yml,yaml}`.
+Repo configuration is committed to a repo and defines how Tedium should handle that repo after it has been discovered from a platform. It must be in the root directory of the repo and named `.tedium.{yml,yaml,json}`.
 
 If no repo configuration file exists then Tedium will skip that repo, unless [auto-enrollment](#auto-enrollment) is enabled.
 
@@ -178,12 +184,12 @@ extends:
 # Optional.
 chores:
   - cloneUrl: "https://github.com/example/my-tedium-chores.git",
-    directory: "tidy-go-mod"
+    directory: "render-circle-ci"
 ```
 
 ## 🧹 Chores
 
-Chores are very simple: they are a series of steps to run against a repo, each of which is defined as a container image reference and a command to run ininside that container.
+Chores are pretty simple: they are a series of steps to run against a repo, each of which is defined as a container image and a command to run ininside that container.
 
 Tedium handles mounting the repo contents at `/tedium/repo` in each container and persisting changes between steps.
 
@@ -224,7 +230,7 @@ steps:
       if [ -f go.mod ]; then go mod tidy; fi
 
     # Environment variables to inject into the container.
-    # Tedium will also provide some utility values, defined in the ToEnvironment() method in internal/schema/executors.go.
+    # Tedium will also provide some values, defined in the ToEnvironment() method in internal/schema/executors.go.
     # Optional.
     environment:
       MY_VAR_1: "foo"
