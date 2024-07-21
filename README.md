@@ -6,7 +6,7 @@ Tedium is a tool to automate the execution of boring or repetitive tasks, called
 
 ## 💻 Usage
 
-The default way to run Tedium is via its container image. The default container command expects a [config file](#configuration) at `/tedium/config.json` but this can be overridden by specifying your own command.
+The default way to run Tedium is via its container image. The default container command expects a [config file](#-configuration) at `/tedium/config.json` but this can be overridden by specifying your own command.
 
 You can run the container locally, in an orchestration tool like Kubernetes, or in any other way you prefet. For example, to run Tedium locally on your machine, use the following (replace `podman` with `docker` if required):
 
@@ -61,7 +61,7 @@ Platforms are where repos are hosted. Tedium uses them to discover repos to oper
 
 So far only Gitea is supported, but [GitHub support](https://github.com/markormesher/tedium/issues/1) is coming soon.
 
-Each run of Tedium can target multiple platforms at the same time (see [Configuration](#configuration) below).
+Each run of Tedium can target multiple platforms at the same time (see [Configuration](#-configuration) below).
 
 ## ✨ Features
 
@@ -82,11 +82,11 @@ Tedium is configured in two place:
 - **Runtime configuration:** the configuration file passed to the Tedium executable when it runs.
 - **Repo configuration:** a configuration file inside each repo.
 
-Additionally, chores need to be defined in order for Tedium to do anything useful - see [Chores](#chores) below.
+Additionally, chores need to be defined in order for Tedium to do anything useful - see [Chores](#-chores) below.
 
 ### Runtime Configuration
 
-Runtime configuration is provided to Tedium on the command line when it is executed (see [Usage](#usage)) to control how the program should run. It can be provided as JSON or YAML.
+Runtime configuration is provided to Tedium on the command line when it is executed (see [Usage](#-usage)) to control how the program should run. It can be provided as JSON or YAML.
 
 The full schema of runtime configuration is defined in [config.go](./internal/schema/config.go) as `TediumConfig`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
 
