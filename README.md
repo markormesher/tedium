@@ -44,8 +44,8 @@ _Note: ideally you should enforce that `go.mod` is tidy as part of pre-merge CI 
 
 By default, Tedium adds extra steps at the beginning and end of each chore:
 
-- Pre-chore: before running chore steps, Tedium will clone the repo and check out a branch for the chore, reusing an existing one if it already exists.
-- Post-chore: after the chore steps finish, Tedium will commit any changes, push them to the repo's platform, and open or update a PR.
+- **Pre-chore:** before running chore steps, Tedium will clone the repo and check out a branch for the chore, reusing an existing one if it already exists.
+- **Post-chore:** after the chore steps finish, Tedium will commit any changes, push them to the repo's platform, and open or update a PR.
 
 These pre-chore and post-chore steps can be disabled if required (for example if your chore never makes changes, but does something like call an API to enforce repository settings).
 
@@ -65,4 +65,45 @@ Each run of Tedium can target multiple platforms at the same time (see [Configur
 
 ## Configuration
 
-TODO
+Tedium is configured in two place:
+
+- **Runtime configuration:** the configuration file passed to the Tedium executable when it runs.
+- **Repo configuration:** a configuration file inside each repo that controls how Tedium handles it.
+
+Additionally, chores need to be defined in order for Tedium to do anything useful - see [Chores](#chores) below.
+
+### Runtime Configuration
+
+> The full schema of runtime configuration is defined [here](./internal/schema/config.go) as `TediumConfig`.
+
+
+
+### Repo Configuration
+
+> The full schema of repo configuration is defined [here](./internal/schema/config.go) as `RepoConfig`.
+
+Repo configuration defines how Tedium should handle that repo after it has been discovered from a platform. It is a single file committed to the repo in the root directory, named `.tedium.{json,yml,yaml}`.
+
+If no repo configuration file exists then Tedium will skip that repo, unless the runtime config enables [auto-enrollment](#auto-enrollment).
+
+#### `.chores` (optional)
+
+Repo configuration can define a list of chores to execute against that repo. Each chore is referenced by the git repo where it can be found and the directory within that repo.
+
+```yaml
+chores:
+  - cloneUrl: "https://github.com/example/my-tedium-chores.git",
+    directory: "tidy-go-mod"
+```
+
+#### `.extends` (optional)
+
+Repo configuration can extend one or more other configurations, allowing a common list of chores to easily be applied across many repos. Each extended configuration is defined as a simple repo URL; the config is expected to live at `index.{json,yml,yaml}` inside that repo.
+
+The list of chores to apply is merged from all extended configurations. Extension is recursive, but recursion will safely abort if a loop is detected.
+
+```yaml
+extends:
+  - "https://github.com/example/tedium-config-all-repos.git"
+  - "https://github.com/example/tedium-config-go-projects.git"
+```
