@@ -92,6 +92,7 @@ The full schema of runtime configuration is defined in [config.go](./internal/sc
 
 ```yaml
 # The executor used to execute chores - you must supply ONE value.
+# Required.
 executor:
 
   # If you're running chores locally with Podman:
@@ -108,28 +109,70 @@ executor:
     namespace: "tedium"
 
 # Platforms to discover repos from.
+# Required.
 platforms:
 
-    # Required; "gitea" only for now, "github" support coming soon.
+    # Platform type; "gitea" only for now, "github" support coming soon.
+    # Required.
   - type: "gitea"
 
     # Required.
     endpoint: "https://gitea.example.com/api/v1"
 
+    # List of regexes to filter repos against during discovery.
+    # Repos matching any filter will be included.
+    # The string tested is "org-name/repo-name". Regex format is as-per the Go standard library.
     # Optional, defaults to all repos being included.
-    # Regex format is as-per the Go standard library.
     repoFilters:
       - "example-.*"
 
-# TODO
+    # Auth for this platform.
+    # Values follow the same format as auth config below.
+    # Takes priority over per-domain auth defined below.
+    # Optional.
+    auth:
+      token: "abc123"
 
-auth: {}
+# Per-domain configuration of platform authentication. Keys must be domains.
+# Used when discovering repos and any time repos are cloned (chores, extended configs, etc).
+# Optional.
+auth:
 
-images: {}
+  gitea.example.com:
+    # Token auth is the only supported mechanism at the moment.
+    token: "abc123"
 
-repoStoragePath: {}
+# Location on disk to store repos that are cloned (target repos, chores, extended configs, etc).
+# Optional, defaults to a temporary path.
+repoStoragePath: "/tmp/tedium"
 
-autoEnrollment: {}
+# Container images used for in-built stages of chores.
+# Optional.
+images:
+
+  # Tedium image used for pre- and post-chore steps.
+  # Optional, defaults to latest.
+  tedium: "ghcr.io/markormesher/tedium:latest"
+
+  # Placeholder image used by the Kubernetes executor.
+  # Optional, defaults to latest.
+  pause: "ghcr.io/markormesher/tedium-pause:latest"
+
+# Auto-enrollment settings for discovered repos that don't already have a repo configuration file.
+# Optional, defaults to disabled.
+autoEnrollment:
+
+  # Optional, defaults to false.
+  enabled: true
+
+  # Repo config to add to any repo (via PR) that is auto-enrolled.
+  # Value must be a valid repo configuration (see below).
+  # Required if auto-enrollment is enabled, optional otherwise.
+  config:
+    extends:
+      - "https://github.com/example/tedium-config-all-repos.git"
+      - "https://github.com/example/tedium-config-go-projects.git"
+    chores: []
 ```
 
 ### Repo Configuration
@@ -141,13 +184,15 @@ If no repo configuration file exists then Tedium will skip that repo, unless [au
 The full schema of repo configuration is defined in [config.go](./internal/schema/config.go) as `RepoConfig`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
 
 ```yaml
-# URLs of repos containing more repo config to apply to this repo
+# URLs of repos containing more repo config to apply to this repo.
+# Optional.
 extends:
   - "https://github.com/example/tedium-config-all-repos.git"
   - "https://github.com/example/tedium-config-go-projects.git"
 
-# chores to execute against this repo
-# each chore is defined as a Git repo URL and a directory within that repo
+# Chores to execute against this repo.
+# Each chore is defined as a Git repo URL and a directory within that repo.
+# Optional.
 chores:
   - cloneUrl: "https://github.com/example/my-tedium-chores.git",
     directory: "tidy-go-mod"
