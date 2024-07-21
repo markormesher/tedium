@@ -124,7 +124,7 @@ platforms:
     # The string tested is "org-name/repo-name". Regex format is as-per the Go standard library.
     # Optional, defaults to all repos being included.
     repoFilters:
-      - "example-.*"
+      - "myorg/example\\-.*"
 
     # Auth for this platform.
     # Values follow the same format as auth config below.
