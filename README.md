@@ -82,9 +82,11 @@ Additionally, chores need to be defined in order for Tedium to do anything usefu
 
 > The full schema of repo configuration is defined [here](./internal/schema/config.go) as `RepoConfig`.
 
-Repo configuration defines how Tedium should handle that repo after it has been discovered from a platform. It is a single file committed to the repo in the root directory, named `.tedium.{json,yml,yaml}`.
+Repo configuration is committed to the repo and defines how Tedium should handle that repo after it has been discovered from a platform.##
 
-If no repo configuration file exists then Tedium will skip that repo, unless the runtime config enables [auto-enrollment](#auto-enrollment).
+It must be in the root directory of the repo and named `.tedium.{json,yml,yaml}`.
+
+If no repo configuration file exists then Tedium will skip that repo, unless [auto-enrollment](#auto-enrollment) is enabled.
 
 #### `.chores` (optional)
 
