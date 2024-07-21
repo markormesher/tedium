@@ -105,6 +105,8 @@ executor:
     # Required when running the executor locally, optional when running it inside the cluster.
     kubeConfigPath: "~/.kube/config"
 
+    # Namespace to execute chores in.
+    # The namespace must exist; Tedium will not create it if it doesn't.
     # Optional, defaults to "default".
     namespace: "tedium"
 
