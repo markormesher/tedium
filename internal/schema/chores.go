@@ -5,17 +5,17 @@ package schema
 import "fmt"
 
 type ChoreSpec struct {
-	Name        string      `json:"name"`
-	Description string      `json:"description"`
-	Steps       []ChoreStep `json:"steps"`
+	Name        string      `json:"name" yaml:"name"`
+	Description string      `json:"description" yaml:"description"`
+	Steps       []ChoreStep `json:"steps" yaml:"steps"`
 
-	SkipCloneStep    bool `json:"skipCloneStep"`
-	SkipFinaliseStep bool `json:"skipFinaliseStep"`
+	SkipCloneStep    bool `json:"skipCloneStep" yaml:"skipCloneStep"`
+	SkipFinaliseStep bool `json:"skipFinaliseStep" yaml:"skipFinaliseStep"`
 }
 
 type ChoreStep struct {
-	Image       string `json:"image"`
-	Command     string `json:"command"`
+	Image       string `json:"image" yaml:"image"`
+	Command     string `json:"command" yaml:"command"`
 	Environment map[string]string
 }
 

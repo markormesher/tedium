@@ -11,21 +11,21 @@ import (
 
 // ExecutorConfig defines the executor used to perform chores.
 type ExecutorConfig struct {
-	Podman     *PodmanExecutorConfig     `json:"podman"`
-	Kubernetes *KubernetesExecutorConfig `json:"kubernetes"`
+	Podman     *PodmanExecutorConfig     `json:"podman" yaml:"podman"`
+	Kubernetes *KubernetesExecutorConfig `json:"kubernetes" yaml:"kubernetes"`
 }
 
 type PodmanExecutorConfig struct {
 	// SocketPath identifies the socket used to communicate with Podman. If not supplied, several default values will be tried.
-	SocketPath string `json:"socketPath"`
+	SocketPath string `json:"socketPath" yaml:"socketPath"`
 }
 
 type KubernetesExecutorConfig struct {
 	// KubeconfigPath locates the configuration used to communicate with Kubernetes. If not supplied, the executable will assume it is running inside Kubernetes and will attempt to use the in-cluster config.
-	KubeconfigPath string `json:"kubeconfigPath"`
+	KubeconfigPath string `json:"kubeconfigPath" yaml:"kubeconfigPath"`
 
 	// Namespace defines where chores are executed. It defaults to "default".
-	Namespace string `json:"namespace"`
+	Namespace string `json:"namespace" yaml:"namespace"`
 }
 
 type Executor interface {
@@ -37,8 +37,8 @@ type Executor interface {
 // ExecutionStep decouples the definition of a ChoreStep from the actual execution.
 type ExecutionStep struct {
 	Label       string
-	Image       string `json:"image"`
-	Command     string `json:"command"`
+	Image       string `json:"image" yaml:"image"`
+	Command     string `json:"command" yaml:"command"`
 	Environment map[string]string
 }
 

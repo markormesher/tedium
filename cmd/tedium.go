@@ -13,7 +13,7 @@ var l = logging.Logger
 
 func main() {
 	internalCommand := flag.String("internal-command", "", "Internal command to perform when Tedium is running itself inside an executor")
-	configFilePath := flag.String("config", "", "Path to JSON configuration file")
+	configFilePath := flag.String("config", "", "Path to configuration file")
 	flag.Parse()
 
 	// special cases: internal commands

@@ -6,12 +6,12 @@ import (
 
 // PlatformConfig defines a Git platform from which repos can be discovered, such as Gitea or GitHub.
 type PlatformConfig struct {
-	Type     string      `json:"type"`
-	Endpoint string      `json:"endpoint"`
-	Auth     *AuthConfig `json:"auth"`
+	Type     string      `json:"type" yaml:"type"`
+	Endpoint string      `json:"endpoint" yaml:"endpoint"`
+	Auth     *AuthConfig `json:"auth" yaml:"auth"`
 
 	// RepoFiltersRaw specifies a list of Go regexes; if specified, only repos that match at least one filter will be processed.
-	RepoFiltersRaw []string `json:"repoFilters"`
+	RepoFiltersRaw []string `json:"repoFilters" yaml:"repoFilters"`
 	RepoFilters    []*regexp.Regexp
 
 	// populated during execution, not via config
@@ -23,7 +23,7 @@ type PlatformConfig struct {
 
 // AuthConfig defines how to authenticate with a platform.
 type AuthConfig struct {
-	Token string `json:"token"`
+	Token string `json:"token" yaml:"token"`
 }
 
 func (pc PlatformConfig) AcceptsRepo(fullName string) bool {

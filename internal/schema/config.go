@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/markormesher/tedium/internal/logging"
+	"gopkg.in/yaml.v3"
 )
 
 var l = logging.Logger
@@ -18,41 +20,41 @@ var l = logging.Logger
 // TediumConfig is passed to the Tedium executable to control its behaviour.
 type TediumConfig struct {
 	// Executor defines the actual executor that will be used to perform chores.
-	Executor ExecutorConfig `json:"executor"`
+	Executor ExecutorConfig `json:"executor" yaml:"executor"`
 
 	// Platforms defines the set of repository hosting platforms that repos will be discovered from.
-	Platforms map[string]*PlatformConfig `json:"platforms"`
+	Platforms map[string]*PlatformConfig `json:"platforms" yaml:"platforms"`
 
 	// Auth defines additional authentication details. The keys are expected to be domains.
-	Auth map[string]*AuthConfig `json:"auth"`
+	Auth map[string]*AuthConfig `json:"auth" yaml:"auth"`
 
 	// Images defines the container images used for Tedium-owned stages of execution
 	Images struct {
-		Tedium string `json:"tedium"`
-		Pause  string `json:"pause"`
-	} `json:"images"`
+		Tedium string `json:"tedium" yaml:"tedium"`
+		Pause  string `json:"pause" yaml:"pause"`
+	} `json:"images" yaml:"images"`
 
 	// RepoStoragePath defines the path on disk where repos should be cloned when needed locally. If blank a temporary folder will be created.
-	RepoStoragePath               string `json:"repoStoragePath"`
+	RepoStoragePath               string `json:"repoStoragePath" yaml:"repoStoragePath"`
 	RepoStoragePathWasAutoCreated bool
 
 	// AutoEnrollment defines the Tedium config to apply to repos that don't already have one.
 	AutoEnrollment struct {
-		Enabled bool       `json:"enabled"`
-		Config  RepoConfig `json:"config"`
-	} `json:"autoEnrollment"`
+		Enabled bool       `json:"enabled" yaml:"enabled"`
+		Config  RepoConfig `json:"config" yaml:"config"`
+	} `json:"autoEnrollment" yaml:"autoEnrollment"`
 }
 
 // RepoConfig is read from a target repo. The main purpose is to define which chores are to be applied.
 type RepoConfig struct {
-	Extends []string          `json:"extends,omitempty"`
-	Chores  []RepoChoreConfig `json:"chores,omitempty"`
+	Extends []string          `json:"extends,omitempty" yaml:"extends,omitempty"`
+	Chores  []RepoChoreConfig `json:"chores,omitempty" yaml:"chores,omitempty"`
 }
 
 // RepoChoreConfig defines one chore to apply to a repo.
 type RepoChoreConfig struct {
-	CloneUrl  string `json:"cloneUrl"`
-	Directory string `json:"directory"`
+	CloneUrl  string `json:"cloneUrl" yaml:"cloneUrl"`
+	Directory string `json:"directory" yaml:"directory"`
 }
 
 // ResolvedRepoConfig is the result of taking a target repo, following all "extends" links, and resolving all chore references into their actual spec.s
@@ -62,24 +64,38 @@ type ResolvedRepoConfig struct {
 
 // ---
 
-func LoadTediumConfig(filePath string) (*TediumConfig, error) {
-	configFileContent, err := os.ReadFile(filePath)
+func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
+	configFileContent, err := os.ReadFile(configFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading configuration file: %v", err)
 	}
 
 	var conf TediumConfig
-	decoder := json.NewDecoder(bytes.NewReader(configFileContent))
-	decoder.DisallowUnknownFields()
-	err = decoder.Decode(&conf)
-	if err != nil {
-		return nil, fmt.Errorf("Error parsing configuration file: %v", err)
+	ext := filepath.Ext(configFilePath)
+	if ext == ".yml" || ext == ".yaml" {
+		decoder := yaml.NewDecoder(bytes.NewReader(configFileContent))
+		decoder.KnownFields(true)
+		err := decoder.Decode(&conf)
+		if err != nil {
+			return nil, fmt.Errorf("Error parsing configuration file: %v", err)
+		}
+	} else if ext == ".json" {
+		decoder := json.NewDecoder(bytes.NewReader(configFileContent))
+		decoder.DisallowUnknownFields()
+		err = decoder.Decode(&conf)
+		if err != nil {
+			return nil, fmt.Errorf("Error parsing configuration file: %v", err)
+		}
+	} else {
+		return nil, fmt.Errorf("Unrecognised file extension: %s", ext)
 	}
 
 	err = conf.CompileRepoFilters()
 	if err != nil {
 		return nil, fmt.Errorf("Error compiling repo filters in configuration: %v", err)
 	}
+
+	// apply defaults
 
 	if conf.RepoStoragePath == "" {
 		conf.RepoStoragePathWasAutoCreated = true
@@ -88,8 +104,6 @@ func LoadTediumConfig(filePath string) (*TediumConfig, error) {
 			return nil, fmt.Errorf("Failed to create a temporary directory for repo storage: %v", err)
 		}
 	}
-
-	// apply defaults
 
 	if conf.Images.Pause == "" {
 		conf.Images.Pause = "ghcr.io/markormesher/tedium-pause:latest"
