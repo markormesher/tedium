@@ -4,7 +4,7 @@
 
 Tedium is a tool to automate the execution of boring or repetitive tasks, called "chores", across all of your Git repos. All chores run in containers, providing complete control over the tooling available. If running a chore against a repo results in changes, Tedium will push those changes and open or update a PR for you.
 
-## Usage
+## 💻 Usage
 
 The default way to run Tedium is via its container image. The default container command expects a [config file](#configuration) at `/tedium/config.json` but this can be overridden by specifying your own command.
 
@@ -20,7 +20,7 @@ Or from directly from source:
 
 `go run -tags remote ./cmd/tedium.go --config ./config.json`
 
-## Concepts
+## 📖 Concepts
 
 There are a few key concepts within Tedium: chores, executors, and platforms.
 
@@ -63,7 +63,7 @@ So far only Gitea is supported, but [GitHub support](https://github.com/markorme
 
 Each run of Tedium can target multiple platforms at the same time (see [Configuration](#configuration) below).
 
-## Features
+## ✨ Features
 
 ### Auto-Enrollment
 
@@ -75,7 +75,7 @@ Repo configuration can extend one or more other configurations, allowing a commo
 
 The list of chores to apply is merged from all extended configurations. Extension is recursive, but recursion will safely abort if a loop is detected.
 
-## Configuration
+## 🔧 Configuration
 
 Tedium is configured in two place:
 
@@ -200,7 +200,7 @@ chores:
     directory: "tidy-go-mod"
 ```
 
-## Chores
+## 🧹 Chores
 
 TODO: what a chore is and how they are defined
 
