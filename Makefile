@@ -10,7 +10,7 @@ build:
 
 .PHONY: run
 run:
-	go run -tags remote ./cmd/tedium.go --config ./config.json
+	go run -tags remote ./cmd/tedium.go --config ./config.yml
 
 .PHONY: img
 img:

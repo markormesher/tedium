@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/markormesher/tedium/internal/logging"
+	"gopkg.in/yaml.v3"
 )
 
 var l = logging.Logger
@@ -62,24 +64,38 @@ type ResolvedRepoConfig struct {
 
 // ---
 
-func LoadTediumConfig(filePath string) (*TediumConfig, error) {
-	configFileContent, err := os.ReadFile(filePath)
+func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
+	configFileContent, err := os.ReadFile(configFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading configuration file: %v", err)
 	}
 
 	var conf TediumConfig
-	decoder := json.NewDecoder(bytes.NewReader(configFileContent))
-	decoder.DisallowUnknownFields()
-	err = decoder.Decode(&conf)
-	if err != nil {
-		return nil, fmt.Errorf("Error parsing configuration file: %v", err)
+	ext := filepath.Ext(configFilePath)
+	if ext == ".yml" || ext == ".yaml" {
+		decoder := yaml.NewDecoder(bytes.NewReader(configFileContent))
+		decoder.KnownFields(true)
+		err := decoder.Decode(&conf)
+		if err != nil {
+			return nil, fmt.Errorf("Error parsing configuration file: %v", err)
+		}
+	} else if ext == ".json" {
+		decoder := json.NewDecoder(bytes.NewReader(configFileContent))
+		decoder.DisallowUnknownFields()
+		err = decoder.Decode(&conf)
+		if err != nil {
+			return nil, fmt.Errorf("Error parsing configuration file: %v", err)
+		}
+	} else {
+		return nil, fmt.Errorf("Unrecognised file extension: %s", ext)
 	}
 
 	err = conf.CompileRepoFilters()
 	if err != nil {
 		return nil, fmt.Errorf("Error compiling repo filters in configuration: %v", err)
 	}
+
+	// apply defaults
 
 	if conf.RepoStoragePath == "" {
 		conf.RepoStoragePathWasAutoCreated = true
@@ -88,8 +104,6 @@ func LoadTediumConfig(filePath string) (*TediumConfig, error) {
 			return nil, fmt.Errorf("Failed to create a temporary directory for repo storage: %v", err)
 		}
 	}
-
-	// apply defaults
 
 	if conf.Images.Pause == "" {
 		conf.Images.Pause = "ghcr.io/markormesher/tedium-pause:latest"
