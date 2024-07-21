@@ -1,5 +1,7 @@
 package schema
 
+// NOTE: this file is referenced in the README - update any links if you move or rename this file.
+
 import "fmt"
 
 type ChoreSpec struct {

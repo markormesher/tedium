@@ -2,7 +2,7 @@
 
 # Tedium
 
-Tedium is a tool to automate the execution of boring or repetitive tasks, called "chores", across all of your git repos. All chores run in containers, providing complete control over the tooling available. If running a chore against a repo results in changes, Tedium will push those changes and open or update a PR for you.
+Tedium is a tool to automate the execution of boring or repetitive tasks, called "chores", across all of your Git repos. All chores run in containers, providing complete control over the tooling available. If running a chore against a repo results in changes, Tedium will push those changes and open or update a PR for you.
 
 ## Usage
 
@@ -63,49 +63,74 @@ So far only Gitea is supported, but [GitHub support](https://github.com/markorme
 
 Each run of Tedium can target multiple platforms at the same time (see [Configuration](#configuration) below).
 
+## Features
+
+### Auto-Enrollment
+
+TODO
+
+### Repo Config Inheritance
+
+Repo configuration can extend one or more other configurations, allowing a common list of chores to easily be applied across many repos. Each inherited configuration is defined as a simple repo URL; the config is expected to live at `index.{json,yml,yaml}` inside that repo.
+
+The list of chores to apply is merged from all extended configurations. Extension is recursive, but recursion will safely abort if a loop is detected.
+
 ## Configuration
 
 Tedium is configured in two place:
 
 - **Runtime configuration:** the configuration file passed to the Tedium executable when it runs.
-- **Repo configuration:** a configuration file inside each repo that controls how Tedium handles it.
+- **Repo configuration:** a configuration file inside each repo.
 
 Additionally, chores need to be defined in order for Tedium to do anything useful - see [Chores](#chores) below.
 
 ### Runtime Configuration
 
-> The full schema of runtime configuration is defined [here](./internal/schema/config.go) as `TediumConfig`.
+Runtime configuration is provided to Tedium on the command line when it is executed (see [Usage](#usage)) to control how the program should run. It can be provided as JSON or YAML.
 
+The full schema of runtime configuration is defined in [config.go](./internal/schema/config.go) as `TediumConfig`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
 
+```yaml
+// the executor used to execute chores - you must supply exaclty ONE value
+executor:
+  // if you're running chores locally with Podman:
+  podman:
+    socketPath: "unix:///run/podman/podman.sock" // optional, several defaults will be tried if not supplied
+
+  // if you're running chores in a Kubernetes cluster:
+  kubernetes:
+    kubeConfigPath: "~/.kube/config" // required when running the executor locally, optional when running it inside the cluster
+    namespace: "tedium" // optional, defaults to "default"
+
+// TODO
+
+platforms: []
+
+auth: {}
+
+images: {}
+
+repoStoragePath: {}
+
+autoEnrollment: {}
+```
 
 ### Repo Configuration
 
-> The full schema of repo configuration is defined [here](./internal/schema/config.go) as `RepoConfig`.
-
-Repo configuration is committed to the repo and defines how Tedium should handle that repo after it has been discovered from a platform.##
-
-It must be in the root directory of the repo and named `.tedium.{json,yml,yaml}`.
+Repo configuration is committed to the repo and defines how Tedium should handle that repo after it has been discovered from a platform. It must be in the root directory of the repo and named `.tedium.{json,yml,yaml}`.
 
 If no repo configuration file exists then Tedium will skip that repo, unless [auto-enrollment](#auto-enrollment) is enabled.
 
-#### `.chores` (optional)
-
-Repo configuration can define a list of chores to execute against that repo. Each chore is referenced by the git repo where it can be found and the directory within that repo.
+The full schema of repo configuration is defined in [config.go](./internal/schema/config.go) as `RepoConfig`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
 
 ```yaml
-chores:
-  - cloneUrl: "https://github.com/example/my-tedium-chores.git",
-    directory: "tidy-go-mod"
-```
-
-#### `.extends` (optional)
-
-Repo configuration can extend one or more other configurations, allowing a common list of chores to easily be applied across many repos. Each extended configuration is defined as a simple repo URL; the config is expected to live at `index.{json,yml,yaml}` inside that repo.
-
-The list of chores to apply is merged from all extended configurations. Extension is recursive, but recursion will safely abort if a loop is detected.
-
-```yaml
+// URLs of repos containing more repo config to apply to this repo
 extends:
   - "https://github.com/example/tedium-config-all-repos.git"
   - "https://github.com/example/tedium-config-go-projects.git"
+
+// chores to execute against this repo; each is defined as a Git repo URL and a directory within that repo
+chores:
+  - cloneUrl: "https://github.com/example/my-tedium-chores.git",
+    directory: "tidy-go-mod"
 ```

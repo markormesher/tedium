@@ -17,6 +17,15 @@ var l = logging.Logger
 
 // TediumConfig is passed to the Tedium executable to control its behaviour.
 type TediumConfig struct {
+	// Executor defines the actual executor that will be used to perform chores.
+	Executor ExecutorConfig `json:"executor"`
+
+	// Platforms defines the set of repository hosting platforms that repos will be discovered from.
+	Platforms map[string]*PlatformConfig `json:"platforms"`
+
+	// Auth defines additional authentication details. The keys are expected to be domains.
+	Auth map[string]*AuthConfig `json:"auth"`
+
 	// Images defines the container images used for Tedium-owned stages of execution
 	Images struct {
 		Tedium string `json:"tedium"`
@@ -26,15 +35,6 @@ type TediumConfig struct {
 	// RepoStoragePath defines the path on disk where repos should be cloned when needed locally. If blank a temporary folder will be created.
 	RepoStoragePath               string `json:"repoStoragePath"`
 	RepoStoragePathWasAutoCreated bool
-
-	// Platforms defines the set of repository hosting platforms that repos will be discovered from.
-	Platforms map[string]*PlatformConfig `json:"platforms"`
-
-	// Auth defines additional authentication details. The keys are expected to be domains.
-	Auth map[string]*AuthConfig `json:"auth"`
-
-	// Executor defines the actual executor that will be used to perform chores.
-	Executor ExecutorConfig `json:"executor"`
 
 	// AutoEnrollment defines the Tedium config to apply to repos that don't already have one.
 	AutoEnrollment struct {

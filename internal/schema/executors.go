@@ -1,5 +1,7 @@
 package schema
 
+// NOTE: this file is referenced in the README - update any links if you move or rename this file.
+
 import (
 	"encoding/json"
 	"fmt"
@@ -14,12 +16,16 @@ type ExecutorConfig struct {
 }
 
 type PodmanExecutorConfig struct {
+	// SocketPath identifies the socket used to communicate with Podman. If not supplied, several default values will be tried.
 	SocketPath string `json:"socketPath"`
 }
 
 type KubernetesExecutorConfig struct {
+	// KubeconfigPath locates the configuration used to communicate with Kubernetes. If not supplied, the executable will assume it is running inside Kubernetes and will attempt to use the in-cluster config.
 	KubeconfigPath string `json:"kubeconfigPath"`
-	Namespace      string `json:"namespace"`
+
+	// Namespace defines where chores are executed. It defaults to "default".
+	Namespace string `json:"namespace"`
 }
 
 type Executor interface {
