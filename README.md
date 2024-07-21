@@ -199,3 +199,9 @@ chores:
   - cloneUrl: "https://github.com/example/my-tedium-chores.git",
     directory: "tidy-go-mod"
 ```
+
+## Chores
+
+TODO: what a chore is and how they are defined
+
+TODO: link to some examples?
