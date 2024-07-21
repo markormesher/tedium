@@ -26,28 +26,9 @@ There are a few key concepts within Tedium: chores, executors, and platforms.
 
 ### Chores
 
-Chores are the boring, repeatable tasks that Tedium runs for you. Each chore contains one or more steps, each of which is defined as a container image reference and a command or script to run ininside that container. Tedium handles mounting the repo to each container and persisting changes between steps.
+Chores are the boring, repeatable tasks that Tedium runs for you. Tedium will execute chores against your repos, and if they cause any changes to the repo it will commit them to a branch and open or update a PR.
 
-For example, this very basic chore will tidy up the `go.mod` file anywhere it exists:
-
-```yaml
-name: "Tidy go.mod",
-description: "Run `go mod tidy` if a go.mod file exists",
-steps:
-  - image: "docker.io/golang:1.22.5"
-    command: |
-      cd /tedium/repo
-      if [ -f go.mod ]; then go mod tidy; fi
-```
-
-_Note: ideally you should enforce that `go.mod` is tidy as part of pre-merge CI checks; this is just an example._
-
-By default, Tedium adds extra steps at the beginning and end of each chore:
-
-- **Pre-chore:** before running chore steps, Tedium will clone the repo and check out a branch for the chore, reusing an existing one if it already exists.
-- **Post-chore:** after the chore steps finish, Tedium will commit any changes, push them to the repo's platform, and open or update a PR.
-
-These pre-chore and post-chore steps can be disabled if required (for example if your chore never makes changes, but does something like call an API to enforce repository settings).
+Running chores is the entire point of Tedium, so see [Chores](#-chores) below for lots more detail.
 
 ### Executors
 
@@ -88,7 +69,7 @@ Additionally, chores need to be defined in order for Tedium to do anything usefu
 
 Runtime configuration is provided to Tedium on the command line when it is executed (see [Usage](#-usage)) to control how the program should run. It can be provided as JSON or YAML.
 
-The full schema of runtime configuration is defined in [config.go](./internal/schema/config.go) as `TediumConfig`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
+The full schema of runtime configuration is defined in [schema/config.go](./internal/schema/config.go) as `TediumConfig`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
 
 ```yaml
 # The executor used to execute chores - you must supply ONE value.
@@ -183,7 +164,7 @@ Repo configuration is committed to the repo and defines how Tedium should handle
 
 If no repo configuration file exists then Tedium will skip that repo, unless [auto-enrollment](#auto-enrollment) is enabled.
 
-The full schema of repo configuration is defined in [config.go](./internal/schema/config.go) as `RepoConfig`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
+The full schema of repo configuration is defined in [schema/config.go](./internal/schema/config.go) as `RepoConfig`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
 
 ```yaml
 # URLs of repos containing more repo config to apply to this repo.
@@ -202,6 +183,58 @@ chores:
 
 ## 🧹 Chores
 
-TODO: what a chore is and how they are defined
+Chores are very simple: they are a series of steps to run against a repo, each of which is defined as a container image reference and a command to run ininside that container.
 
-TODO: link to some examples?
+Tedium handles mounting the repo contents at `/tedium/repo` in each container and persisting changes between steps.
+
+By default, Tedium adds extra steps at the beginning and end of each chore:
+
+- **Pre-chore:** before running chore steps, Tedium will clone the repo and check out a branch for the chore, reusing an existing one if it already exists.
+- **Post-chore:** after the chore steps finish, Tedium will commit any changes, push them to the repo's platform, and open or update a PR.
+
+These pre-chore and post-chore steps can be disabled if required (for example if your chore never makes changes, but does something like call an API to enforce repository settings).
+
+### Definition
+
+Chores live in dedicated repos, organised into directories, as shown above.
+
+The full schema of a chore is defined in [schema/chores.go](./internal/schema/chores.go) as `ChoreSpec`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
+
+```yaml
+# Name of this chore. This will be visible to users in PR titles.
+# Required.
+name: "Tidy go.mod",
+
+# Description of this chore. This will be visible to users in PR bodies.
+# Optional but highly recommended.
+description: "Run `go mod tidy` if a go.mod file exists",
+
+# Steps for this chore.
+# Required.
+steps:
+
+    # Image to use for this step.
+    # Required.
+  - image: "docker.io/golang:1.22.5"
+
+    # Command to run in this step. This will be piped to `/bin/sh` in the container.
+    # Required.
+    command: |
+      cd /tedium/repo
+      if [ -f go.mod ]; then go mod tidy; fi
+
+    # Environment variables to inject into the container.
+    # Tedium will also provide some utility values, defined in the ToEnvironment() method in internal/schema/executors.go.
+    # Optional.
+    environment:
+      MY_VAR_1: "foo"
+      MY_VAR_2: "bar"
+
+# If true, skip the pre-chore step to clone the repo.
+# Optional, defaults to false.
+skipCloneStep: false
+
+# If true, skip the post-chore step to commit and push any changes.
+# Optional, defaults to false.
+skipFinaliseStep: false
+```
