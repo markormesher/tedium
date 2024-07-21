@@ -55,13 +55,17 @@ Each run of Tedium can target multiple platforms at the same time (see [Configur
 
 ### Auto-Enrollment
 
-TODO
+If Tedium encounters a repo that lacks a [repo config](#repo-config) file, it can optionally open a PR to auto-enroll that repo with a config that you define. This makes it easier to adopt using Tedium across your repos and helps to stop new repos from being left behind.
+
+See `.autoEnrollment` under [runtime configuration](#runtime-configuration).
 
 ### Repo Config Inheritance
 
 Repo configuration can extend one or more other configurations, allowing a common list of chores to easily be applied across many repos. Each inherited configuration is defined as a simple repo URL; the config is expected to live at `index.{yml,yaml,json}` inside that repo.
 
 The list of chores to apply is merged from all extended configurations. Extension is recursive and will safely abort if a loop is detected.
+
+See `.extends` under [repo configuration](#repo-configuration).
 
 ## 🔧 Configuration
 
