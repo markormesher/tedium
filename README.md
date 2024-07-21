@@ -91,18 +91,18 @@ Runtime configuration is provided to Tedium on the command line when it is execu
 The full schema of runtime configuration is defined in [config.go](./internal/schema/config.go) as `TediumConfig`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
 
 ```yaml
-// the executor used to execute chores - you must supply exaclty ONE value
+# the executor used to execute chores - you must supply exaclty ONE value
 executor:
-  // if you're running chores locally with Podman:
+  # if you're running chores locally with Podman:
   podman:
-    socketPath: "unix:///run/podman/podman.sock" // optional, several defaults will be tried if not supplied
+    socketPath: "unix:///run/podman/podman.sock" # optional, several defaults will be tried if not supplied
 
-  // if you're running chores in a Kubernetes cluster:
+  # if you're running chores in a Kubernetes cluster:
   kubernetes:
-    kubeConfigPath: "~/.kube/config" // required when running the executor locally, optional when running it inside the cluster
-    namespace: "tedium" // optional, defaults to "default"
+    kubeConfigPath: "~/.kube/config" # required when running the executor locally, optional when running it inside the cluster
+    namespace: "tedium" # optional, defaults to "default"
 
-// TODO
+# TODO
 
 platforms: []
 
@@ -124,12 +124,12 @@ If no repo configuration file exists then Tedium will skip that repo, unless [au
 The full schema of repo configuration is defined in [config.go](./internal/schema/config.go) as `RepoConfig`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
 
 ```yaml
-// URLs of repos containing more repo config to apply to this repo
+# URLs of repos containing more repo config to apply to this repo
 extends:
   - "https://github.com/example/tedium-config-all-repos.git"
   - "https://github.com/example/tedium-config-go-projects.git"
 
-// chores to execute against this repo; each is defined as a Git repo URL and a directory within that repo
+# chores to execute against this repo; each is defined as a Git repo URL and a directory within that repo
 chores:
   - cloneUrl: "https://github.com/example/my-tedium-chores.git",
     directory: "tidy-go-mod"
