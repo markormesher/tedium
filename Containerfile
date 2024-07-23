@@ -12,7 +12,7 @@ RUN make build
 
 # ---
 
-FROM debian:bookworm
+FROM debian:bookworm@sha256:ce0d55d69cdef17ce7795bee32c730f2490d9cbc8b137889975707c850add94c
 WORKDIR /app
 
 RUN apt update \
