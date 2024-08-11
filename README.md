@@ -209,7 +209,7 @@ These pre-chore and post-chore steps can be disabled if required (for example if
 
 ### Definition
 
-Chores live in dedicated repos, organised into directories, as shown above.
+Chores live in dedicated repos, organised into directories, as shown above. The definition file is expected to live at `chore.{yml,yaml,json}` within the directory; no other files from the directory will be read by Tedium, but it's not a problem if other file are present (for example, you might use that directory for the `Containerfile` and any scripts needed to build your chore image).
 
 The full schema of a chore is defined in [schema/chores.go](./internal/schema/chores.go) as `ChoreSpec`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
 
