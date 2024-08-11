@@ -60,8 +60,10 @@ jobs:
           name: Maybe publish container image
           command: |
             if ! git describe --exact-match HEAD > /dev/null 2>&1; then echo "Not on tagged commit - nothing to do"; exit 0; fi
+            docker tag ghcr.io/markormesher/${CIRCLE_PROJECT_REPONAME}:$(git describe --tags) ghcr.io/markormesher/${CIRCLE_PROJECT_REPONAME}:latest
             echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
             docker push ghcr.io/markormesher/${CIRCLE_PROJECT_REPONAME}:$(git describe --tags)
+            docker push ghcr.io/markormesher/${CIRCLE_PROJECT_REPONAME}:latest
 
 workflows:
   version: 2
