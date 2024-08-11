@@ -297,7 +297,7 @@ func fetchAll(repo *schema.Repo) error {
 	}
 
 	err = origin.Fetch(&git.FetchOptions{
-		RefSpecs: []config.RefSpec{"+refs/heads/*:refs/remotes/origin/*", "+refs/*:refs/*", "+HEAD:refs/heads/HEAD"},
+		RefSpecs: []config.RefSpec{"+refs/heads/*:refs/remotes/origin/*", "+refs/*:refs/*"},
 		Auth:     repoAuth(repo),
 		Prune:    true,
 	})
