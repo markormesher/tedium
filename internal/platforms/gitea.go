@@ -88,7 +88,7 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 }
 
 func (p *GiteaPlatform) RepoHasTediumConfig(repo *schema.Repo) (bool, error) {
-	file, err := p.ReadRepoFile(repo, ".tedium.json")
+	file, err := p.ReadRepoFile(repo, utils.AddYamlJsonExtensions(".tedium"))
 
 	if err != nil {
 		return false, fmt.Errorf("Failed to read Tedium file via Gitea API: %w", err)
@@ -97,28 +97,34 @@ func (p *GiteaPlatform) RepoHasTediumConfig(repo *schema.Repo) (bool, error) {
 	return file != nil, nil
 }
 
-func (p *GiteaPlatform) ReadRepoFile(repo *schema.Repo, path string) ([]byte, error) {
+func (p *GiteaPlatform) ReadRepoFile(repo *schema.Repo, pathCandidates []string) ([]byte, error) {
 	var repoFile struct {
 		Content string `json:"content"`
 	}
 
-	_, req := p.authedRequest()
-	req.SetResult(&repoFile)
-	response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.Endpoint, repo.OwnerName, repo.Name, path))
-	if err != nil {
-		return nil, fmt.Errorf("Failed to read file via Gitea API: %w", err)
+	for _, path := range pathCandidates {
+		_, req := p.authedRequest()
+		req.SetResult(&repoFile)
+		response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.Endpoint, repo.OwnerName, repo.Name, path))
+		if err != nil {
+			return nil, fmt.Errorf("Failed to read file via Gitea API: %w", err)
+		}
+
+		if response.StatusCode() == 404 {
+			// no match for this candidate, but there may be others
+			continue
+		}
+
+		fileStr, err := base64.StdEncoding.DecodeString(repoFile.Content)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to decode base64 string: %w", err)
+		}
+
+		return fileStr, nil
 	}
 
-	if response.StatusCode() == 404 {
-		return nil, nil
-	}
-
-	fileStr, err := base64.StdEncoding.DecodeString(repoFile.Content)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to decode base64 string: %w", err)
-	}
-
-	return fileStr, nil
+	// no result for any path candidate
+	return nil, nil
 }
 
 func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {

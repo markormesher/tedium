@@ -4,14 +4,13 @@ package schema
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 
 	"github.com/markormesher/tedium/internal/logging"
+	"github.com/markormesher/tedium/internal/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -71,23 +70,15 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 	}
 
 	var conf TediumConfig
-	ext := filepath.Ext(configFilePath)
-	if ext == ".yml" || ext == ".yaml" {
+	if utils.IsYamlOrJsonFile(configFilePath) {
 		decoder := yaml.NewDecoder(bytes.NewReader(configFileContent))
 		decoder.KnownFields(true)
 		err := decoder.Decode(&conf)
 		if err != nil {
 			return nil, fmt.Errorf("Error parsing configuration file: %v", err)
 		}
-	} else if ext == ".json" {
-		decoder := json.NewDecoder(bytes.NewReader(configFileContent))
-		decoder.DisallowUnknownFields()
-		err = decoder.Decode(&conf)
-		if err != nil {
-			return nil, fmt.Errorf("Error parsing configuration file: %v", err)
-		}
 	} else {
-		return nil, fmt.Errorf("Unrecognised file extension: %s", ext)
+		return nil, fmt.Errorf("Unacceptable file format: %s", configFilePath)
 	}
 
 	err = conf.CompileRepoFilters()
@@ -107,6 +98,10 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 
 	if conf.Images.Pause == "" {
 		conf.Images.Pause = "ghcr.io/markormesher/tedium-pause:latest"
+	}
+
+	if conf.Images.Tedium == "" {
+		conf.Images.Pause = "ghcr.io/markormesher/tedium:latest"
 	}
 
 	return &conf, nil
