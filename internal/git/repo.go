@@ -223,7 +223,7 @@ func CommitAndPushIfChanged(job *schema.Job, botProfile *schema.PlatformBotProfi
 	return true, nil
 }
 
-func ReadFile(repo *schema.Repo, path string) ([]byte, error) {
+func ReadFile(repo *schema.Repo, pathCandidates []string) ([]byte, error) {
 	isPresent, err := isPresentOnDisk(repo)
 	if err != nil {
 		return nil, fmt.Errorf("Error checking before reading file from repo: %w", err)
@@ -233,12 +233,27 @@ func ReadFile(repo *schema.Repo, path string) ([]byte, error) {
 		return nil, fmt.Errorf("Cannot read a file from a repo that is not present on disk")
 	}
 
-	file, err := os.ReadFile(fmt.Sprintf("%s/%s", repo.PathOnDisk, path))
-	if err != nil {
-		return nil, fmt.Errorf("Error reading file from repo: %w", err)
+	for _, path := range pathCandidates {
+		fullPath := fmt.Sprintf("%s/%s", repo.PathOnDisk, path)
+
+		_, pathErr := os.Stat(fullPath)
+		if pathErr != nil {
+			if os.IsNotExist(pathErr) {
+				continue
+			}
+
+			return nil, fmt.Errorf("Error checking whether repo file exists: %w", err)
+		}
+
+		file, err := os.ReadFile(fullPath)
+		if err != nil {
+			return nil, fmt.Errorf("Error reading file from repo: %w", err)
+		}
+
+		return file, nil
 	}
 
-	return file, nil
+	return nil, fmt.Errorf("Could not ready from any candidate path: %v", pathCandidates)
 }
 
 func repoAuth(repo *schema.Repo) transport.AuthMethod {

@@ -2,13 +2,13 @@ package entrypoints
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 
 	"github.com/markormesher/tedium/internal/git"
 	"github.com/markormesher/tedium/internal/platforms"
 	"github.com/markormesher/tedium/internal/schema"
 	"github.com/markormesher/tedium/internal/utils"
+	"gopkg.in/yaml.v3"
 )
 
 func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo, platform platforms.Platform) (*schema.ResolvedRepoConfig, error) {
@@ -41,7 +41,7 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo, platf
 
 		if *url == targetRepo.CloneUrl {
 			// it's the target repo, so we can read the config from there without instantiation
-			configContents, err = platform.ReadRepoFile(targetRepo, ".tedium.json")
+			configContents, err = platform.ReadRepoFile(targetRepo, utils.AddYamlJsonExtensions(".tedium"))
 			if err != nil {
 				return nil, fmt.Errorf("Failed to read config file out of repo: %w", err)
 			}
@@ -56,16 +56,16 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo, platf
 				return nil, fmt.Errorf("Failed to instantiate repo: %w", err)
 			}
 
-			configContents, err = git.ReadFile(configRepo, "index.json")
+			configContents, err = git.ReadFile(configRepo, utils.AddYamlJsonExtensions("index"))
 			if err != nil {
 				return nil, fmt.Errorf("Failed to read config file out of repo: %w", err)
 			}
 		}
 
 		var repoConfig *schema.RepoConfig
-		decoder := json.NewDecoder(bytes.NewReader(configContents))
-		decoder.DisallowUnknownFields()
-		err = decoder.Decode(&repoConfig)
+		decoder := yaml.NewDecoder(bytes.NewReader(configContents))
+		decoder.KnownFields(true)
+		err := decoder.Decode(&repoConfig)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to unmarshal repo config file: %w", err)
 		}
@@ -137,14 +137,14 @@ func mergeRepoConfigs(a, b *schema.RepoConfig) (*schema.RepoConfig, error) {
 }
 
 func readChoreSpec(choreRepo *schema.Repo, choreConfig *schema.RepoChoreConfig) (*schema.ChoreSpec, error) {
-	choreSpecFile, err := git.ReadFile(choreRepo, fmt.Sprintf("%s/chore.json", choreConfig.Directory))
+	choreSpecFile, err := git.ReadFile(choreRepo, utils.AddYamlJsonExtensions((fmt.Sprintf("%s/chore", choreConfig.Directory))))
 	if err != nil {
 		return nil, fmt.Errorf("Error reading chore spec file: %v", err)
 	}
 
 	var choreSpec schema.ChoreSpec
-	decoder := json.NewDecoder(bytes.NewReader(choreSpecFile))
-	decoder.DisallowUnknownFields()
+	decoder := yaml.NewDecoder(bytes.NewReader(choreSpecFile))
+	decoder.KnownFields(true)
 	err = decoder.Decode(&choreSpec)
 	if err != nil {
 		return nil, err

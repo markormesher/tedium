@@ -12,7 +12,7 @@ You can run the container locally, in an orchestration tool like Kubernetes, or 
 
 ```shell
 # replace `podman` with `docker` if required
-podman run -it --rm -v ./config.json:/tedium/config.json ghcr.io/markormesher/tedium:latest
+podman run -it --rm -v ./config.yml:/tedium/config.yml ghcr.io/markormesher/tedium:latest
 ```
 
 Alternatively, you can run Tedium from the executable:
@@ -104,9 +104,12 @@ executor:
 # Required.
 platforms:
 
+  # Keys can be any string
+  my-gitea:
+
     # Platform type; "gitea" only for now, "github" support coming soon.
     # Required.
-  - type: "gitea"
+    type: "gitea"
 
     # Required.
     endpoint: "https://gitea.example.com/api/v1"
@@ -206,7 +209,7 @@ These pre-chore and post-chore steps can be disabled if required (for example if
 
 ### Definition
 
-Chores live in dedicated repos, organised into directories, as shown above.
+Chores live in dedicated repos, organised into directories, as shown above. The definition file is expected to live at `chore.{yml,yaml,json}` within the directory; no other files from the directory will be read by Tedium, but it's not a problem if other file are present (for example, you might use that directory for the `Containerfile` and any scripts needed to build your chore image).
 
 The full schema of a chore is defined in [schema/chores.go](./internal/schema/chores.go) as `ChoreSpec`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
 

@@ -14,7 +14,7 @@ type Platform interface {
 
 	DiscoverRepos() ([]schema.Repo, error)
 	RepoHasTediumConfig(repo *schema.Repo) (bool, error)
-	ReadRepoFile(repo *schema.Repo, path string) ([]byte, error)
+	ReadRepoFile(repo *schema.Repo, pathCandidates []string) ([]byte, error)
 	OpenOrUpdatePullRequest(job *schema.Job) error
 }
 
