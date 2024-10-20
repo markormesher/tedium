@@ -150,7 +150,7 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 		return fmt.Errorf("Error fetching existing PRs: %w", err)
 	}
 
-	if response.StatusCode() != 200 {
+	if !response.IsSuccess() {
 		return fmt.Errorf("Error fetching existing PRs: %v", string(response.Body()))
 	}
 
@@ -185,7 +185,7 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 		return fmt.Errorf("Error opening or updating PR: %w", err)
 	}
 
-	if response.StatusCode() != 201 {
+	if !response.IsSuccess() {
 		return fmt.Errorf("Error opening or updating PR: %v", string(response.Body()))
 	}
 

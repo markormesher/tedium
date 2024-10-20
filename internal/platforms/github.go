@@ -180,7 +180,7 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 		return fmt.Errorf("Error fetching existing PRs: %w", err)
 	}
 
-	if response.StatusCode() != 200 {
+	if !response.IsSuccess() {
 		return fmt.Errorf("Error fetching existing PRs: %v", string(response.Body()))
 	}
 
@@ -218,8 +218,8 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 		return fmt.Errorf("Error opening or updating PR: %w", err)
 	}
 
-	if response.StatusCode() != 200 {
-		return fmt.Errorf("Error opening or updating PR: %v", string(response.StatusCode()))
+	if !response.IsSuccess() {
+		return fmt.Errorf("Error opening or updating PR: status %d", response.StatusCode())
 	}
 
 	return nil
