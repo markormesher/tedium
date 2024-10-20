@@ -3,8 +3,11 @@ package platforms
 import (
 	"fmt"
 
+	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/schema"
 )
+
+var l = logging.Logger
 
 type Platform interface {
 	Init(conf *schema.TediumConfig) error
@@ -18,33 +21,20 @@ type Platform interface {
 	OpenOrUpdatePullRequest(job *schema.Job) error
 }
 
-var platformCache = make(map[string]Platform)
-
-func FromConfig(config *schema.TediumConfig, endpoint string) (Platform, error) {
-	cachedPlatform, ok := platformCache[endpoint]
-	if ok {
-		return cachedPlatform, nil
-	}
-
-	var platformConfig *schema.PlatformConfig
-	for i := range config.Platforms {
-		if config.Platforms[i].Endpoint == endpoint {
-			platformConfig = config.Platforms[i]
-			break
-		}
-	}
-
-	if platformConfig == nil {
-		return nil, fmt.Errorf("Unrecognised platform endpoint: %s", endpoint)
-	}
-
+func FromConfig(platformConfig *schema.PlatformConfig) (Platform, error) {
 	switch platformConfig.Type {
 	case "gitea":
 		p := &GiteaPlatform{
 			Endpoint: platformConfig.Endpoint,
 			Auth:     platformConfig.Auth,
 		}
-		platformCache[endpoint] = p
+		return p, nil
+
+	case "github":
+		p := &GitHubPlatform{
+			Endpoint: platformConfig.Endpoint,
+			Auth:     platformConfig.Auth,
+		}
 		return p, nil
 	}
 
