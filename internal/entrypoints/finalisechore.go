@@ -15,7 +15,7 @@ func FinaliseChore() {
 		os.Exit(1)
 	}
 
-	platform, err := platforms.FromConfig(job.Config, job.PlatformEndpoint)
+	platform, err := platforms.FromConfig(job.PlatformConfig)
 	if err != nil {
 		l.Error("Error getting platform from environment", "error", err)
 		os.Exit(1)

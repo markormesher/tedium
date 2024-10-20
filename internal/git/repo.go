@@ -212,9 +212,10 @@ func CommitAndPushIfChanged(job *schema.Job, botProfile *schema.PlatformBotProfi
 
 	reportRepoState(realRepo, "commit: after")
 
+	auth := repoAuth(job.Repo)
 	err = realRepo.Push(&git.PushOptions{
 		Force: false,
-		Auth:  repoAuth(job.Repo),
+		Auth:  auth,
 	})
 	if err != nil {
 		return false, fmt.Errorf("Error pushing changes: %w", err)
@@ -263,8 +264,18 @@ func repoAuth(repo *schema.Repo) transport.AuthMethod {
 	}
 
 	if authConfig.Token != "" {
-		return &http.TokenAuth{
-			Token: authConfig.Token,
+		// token -> basic auth? yep, gitea and github both want it this way
+		return &http.BasicAuth{
+			Username: "x-access-token",
+			Password: authConfig.Token,
+		}
+	}
+
+	if authConfig.InternalToken != "" {
+		// token -> basic auth? yep, gitea and github both want it this way
+		return &http.BasicAuth{
+			Username: "x-access-token",
+			Password: authConfig.InternalToken,
 		}
 	}
 

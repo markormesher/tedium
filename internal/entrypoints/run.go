@@ -77,11 +77,11 @@ func Run(conf *schema.TediumConfig) {
 func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 	var jobQueue utils.Queue[schema.Job]
 
-	for i := range conf.Platforms {
-		platformConfig := conf.Platforms[i]
+	for id := range conf.Platforms {
+		platformConfig := conf.Platforms[id]
 
-		l.Info("Initialising platform", "platform", platformConfig.Endpoint)
-		platform, err := platforms.FromConfig(conf, platformConfig.Endpoint)
+		l.Info("Initialising platform", "platform", id)
+		platform, err := platforms.FromConfig(platformConfig)
 		if err != nil {
 			l.Error("Error initialising platform", "error", err)
 			os.Exit(1)
@@ -135,11 +135,11 @@ func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 
 			for choreIdx := range repoConfig.Chores {
 				jobQueue.Push(schema.Job{
-					Config:           conf,
-					Repo:             targetRepo,
-					RepoConfig:       repoConfig,
-					Chore:            repoConfig.Chores[choreIdx],
-					PlatformEndpoint: platformConfig.Endpoint,
+					Config:         conf,
+					Repo:           targetRepo,
+					RepoConfig:     repoConfig,
+					Chore:          repoConfig.Chores[choreIdx],
+					PlatformConfig: platformConfig,
 				})
 			}
 		}

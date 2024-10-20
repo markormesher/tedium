@@ -3,3 +3,4 @@ build/
 # keep config private
 config.json
 config.yml
+*.pem
