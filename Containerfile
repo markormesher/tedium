@@ -1,6 +1,8 @@
 FROM docker.io/golang:1.23.2@sha256:ad5c126b5cf501a8caef751a243bb717ec204ab1aa56dc41dc11be089fafcb4f as builder
 WORKDIR /app
 
+RUN apt update && apt install -y --no-install-recommends libbtrfs-dev libgpgme-dev
+
 # deps
 COPY go.mod go.sum ./
 RUN go mod download
@@ -18,6 +20,8 @@ WORKDIR /app
 RUN apt update \
   && apt install -y --no-install-recommends \
   ca-certificates \
+  libbtrfs-dev \
+  libgpgme-dev \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/build /app
