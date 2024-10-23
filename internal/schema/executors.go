@@ -44,13 +44,15 @@ type ExecutionStep struct {
 
 // Job represents an item of work to be done: a specific chore on a specific repo. It should be self-contained; i.e. carry all the info needed to perform a job.
 type Job struct {
-	Config           *TediumConfig
-	Repo             *Repo
-	RepoConfig       *ResolvedRepoConfig
-	Chore            *ChoreSpec
-	ExecutionSteps   []ExecutionStep
-	PlatformEndpoint string
+	Config         *TediumConfig
+	Repo           *Repo
+	RepoConfig     *ResolvedRepoConfig
+	Chore          *ChoreSpec
+	ExecutionSteps []ExecutionStep
+	PlatformConfig *PlatformConfig
 }
+
+// TODO: encode the whole job?
 
 func (job *Job) ToEnvironment() (map[string]string, error) {
 	tediumConfigStr, err := json.Marshal(job.Config)
@@ -75,12 +77,17 @@ func (job *Job) ToEnvironment() (map[string]string, error) {
 		return nil, fmt.Errorf("Error marshalling repo config into environment variable: %w", err)
 	}
 
+	platformConfigString, err := json.Marshal(job.PlatformConfig)
+	if err != nil {
+		return nil, fmt.Errorf("Error marshalling platform config into environment variable: %w", err)
+	}
+
 	env := make(map[string]string)
 	env["TEDIUM_CONFIG"] = string(tediumConfigStr)
 	env["TEDIUM_CHORE_SPEC"] = string(choreSpecStr)
 	env["TEDIUM_REPO"] = string(repoStr)
 	env["TEDIUM_REPO_CONFIG"] = string(repoConfigStr)
-	env["TEDIUM_PLATFORM_ENDPOINT"] = job.PlatformEndpoint
+	env["TEDIUM_PLATFORM_CONFIG"] = string(platformConfigString)
 
 	return env, nil
 }
@@ -91,6 +98,7 @@ func JobFromEnvironment() (*Job, error) {
 	choreSpecStr := os.Getenv("TEDIUM_CHORE_SPEC")
 	repoStr := os.Getenv("TEDIUM_REPO")
 	repoConfigStr := os.Getenv("TEDIUM_REPO_CONFIG")
+	platformConfigString := os.Getenv("TEDIUM_PLATFORM_CONFIG")
 
 	if tediumConfigStr == "" {
 		return nil, fmt.Errorf("Tedium config not present in environment")
@@ -106,6 +114,10 @@ func JobFromEnvironment() (*Job, error) {
 
 	if repoConfigStr == "" {
 		return nil, fmt.Errorf("Repo config not present in environment")
+	}
+
+	if platformConfigString == "" {
+		return nil, fmt.Errorf("Platform config not present in environment")
 	}
 
 	// decode blobs
@@ -141,18 +153,19 @@ func JobFromEnvironment() (*Job, error) {
 		return nil, fmt.Errorf("Error decoding repo config: %w", err)
 	}
 
-	// simple values
-	platformEndpoint := os.Getenv("TEDIUM_PLATFORM_ENDPOINT")
-
-	if platformEndpoint == "" {
-		return nil, fmt.Errorf("Platform endpoint not present in environment")
+	var platformConfig PlatformConfig
+	decoder = json.NewDecoder(strings.NewReader(platformConfigString))
+	decoder.DisallowUnknownFields()
+	err = decoder.Decode(&platformConfig)
+	if err != nil {
+		return nil, fmt.Errorf("Error decoding platform config: %w", err)
 	}
 
 	return &Job{
-		Config:           &tediumConfig,
-		Repo:             &repo,
-		RepoConfig:       &repoConfig,
-		Chore:            &choreSpec,
-		PlatformEndpoint: platformEndpoint,
+		Config:         &tediumConfig,
+		Repo:           &repo,
+		RepoConfig:     &repoConfig,
+		Chore:          &choreSpec,
+		PlatformConfig: &platformConfig,
 	}, nil
 }
