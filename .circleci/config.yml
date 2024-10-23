@@ -42,7 +42,7 @@ jobs:
           at: .
       - run:
           name: Install dependencies
-          command: apt update && apt install -y --no-install-recommends libbtrfs-dev libgpgme-dev
+          command: sudo apt update && sudo apt install -y --no-install-recommends libbtrfs-dev libgpgme-dev
       - run:
           name: Build
           command: make build
