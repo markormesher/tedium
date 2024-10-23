@@ -5,20 +5,18 @@ import (
 	"fmt"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/schema"
 	"github.com/markormesher/tedium/internal/utils"
 )
-
-var l = logging.Logger
 
 type GiteaPlatform struct {
 	Endpoint string
 	Auth     *schema.AuthConfig
 
 	// private state
-	finalAuth  *schema.AuthConfig
-	botProfile *schema.PlatformBotProfile
+	originalPlatformConfig *schema.PlatformConfig
+	finalAuth              *schema.AuthConfig
+	botProfile             *schema.PlatformBotProfile
 }
 
 // interface methods
@@ -137,6 +135,7 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 		State string `json:"state"`
 
 		Base struct {
+			// TODO: for GitHub these labels are "owner:branch" not just "branch" - are they the same here sometimes?
 			Label string `json:"label"`
 		} `json:"base"`
 		Head struct {
@@ -151,7 +150,7 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 		return fmt.Errorf("Error fetching existing PRs: %w", err)
 	}
 
-	if response.StatusCode() != 200 {
+	if !response.IsSuccess() {
 		return fmt.Errorf("Error fetching existing PRs: %v", string(response.Body()))
 	}
 
@@ -186,7 +185,7 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 		return fmt.Errorf("Error opening or updating PR: %w", err)
 	}
 
-	if response.StatusCode() != 201 {
+	if !response.IsSuccess() {
 		return fmt.Errorf("Error opening or updating PR: %v", string(response.Body()))
 	}
 
