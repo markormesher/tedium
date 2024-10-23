@@ -15,6 +15,8 @@ func FinaliseChore() {
 		os.Exit(1)
 	}
 
+	job.ModifyToRunInsideExecutor()
+
 	platform, err := platforms.FromConfig(job.PlatformConfig)
 	if err != nil {
 		l.Error("Error getting platform from environment", "error", err)

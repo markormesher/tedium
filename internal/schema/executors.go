@@ -36,9 +36,10 @@ type Executor interface {
 
 // ExecutionStep decouples the definition of a ChoreStep from the actual execution.
 type ExecutionStep struct {
+	Image   string `json:"image" yaml:"image"`
+	Command string `json:"command" yaml:"command"`
+
 	Label       string
-	Image       string `json:"image" yaml:"image"`
-	Command     string `json:"command" yaml:"command"`
 	Environment map[string]string
 }
 
@@ -52,120 +53,39 @@ type Job struct {
 	PlatformConfig *PlatformConfig
 }
 
-// TODO: encode the whole job?
-
+// ToEnvironment() generates a set of environment variables that are passed into chore execution steps.
 func (job *Job) ToEnvironment() (map[string]string, error) {
-	tediumConfigStr, err := json.Marshal(job.Config)
+	env := make(map[string]string, 0)
+
+	// used directly by Tedium for the init and finalise steps
+	jobStrBytes, err := json.Marshal(job)
 	if err != nil {
 		return nil, fmt.Errorf("Error marshalling Tedium config into environment variable: %w", err)
 	}
+	env["TEDIUM_JOB"] = string(jobStrBytes)
 
-	choreSpecStr, err := json.Marshal(job.Chore)
-	if err != nil {
-		return nil, fmt.Errorf("Error marshalling chore spec into environment variable: %w", err)
-	}
-
-	repo := job.Repo
-	repo.PathOnDisk = "/tedium/repo"
-	repoStr, err := json.Marshal(repo)
-	if err != nil {
-		return nil, fmt.Errorf("Error marshalling repo into environment variable: %w", err)
-	}
-
-	repoConfigStr, err := json.Marshal(job.RepoConfig)
-	if err != nil {
-		return nil, fmt.Errorf("Error marshalling repo config into environment variable: %w", err)
-	}
-
-	platformConfigString, err := json.Marshal(job.PlatformConfig)
-	if err != nil {
-		return nil, fmt.Errorf("Error marshalling platform config into environment variable: %w", err)
-	}
-
-	env := make(map[string]string)
-	env["TEDIUM_CONFIG"] = string(tediumConfigStr)
-	env["TEDIUM_CHORE_SPEC"] = string(choreSpecStr)
-	env["TEDIUM_REPO"] = string(repoStr)
-	env["TEDIUM_REPO_CONFIG"] = string(repoConfigStr)
-	env["TEDIUM_PLATFORM_CONFIG"] = string(platformConfigString)
+	// made available for convenience in actual chore steps
+	env["TEDIUM_REPO_OWNER"] = job.Repo.OwnerName
+	env["TEDIUM_REPO_NAME"] = job.Repo.Name
+	// ...more
 
 	return env, nil
 }
 
+func (job *Job) ModifyToRunInsideExecutor() {
+	job.Repo.PathOnDisk = "/tedium/repo"
+}
+
 func JobFromEnvironment() (*Job, error) {
-	// whole config blobs
-	tediumConfigStr := os.Getenv("TEDIUM_CONFIG")
-	choreSpecStr := os.Getenv("TEDIUM_CHORE_SPEC")
-	repoStr := os.Getenv("TEDIUM_REPO")
-	repoConfigStr := os.Getenv("TEDIUM_REPO_CONFIG")
-	platformConfigString := os.Getenv("TEDIUM_PLATFORM_CONFIG")
+	jobStr := os.Getenv("TEDIUM_JOB")
 
-	if tediumConfigStr == "" {
-		return nil, fmt.Errorf("Tedium config not present in environment")
-	}
-
-	if choreSpecStr == "" {
-		return nil, fmt.Errorf("Chore spec not present in environment")
-	}
-
-	if repoStr == "" {
-		return nil, fmt.Errorf("Repo not present in environment")
-	}
-
-	if repoConfigStr == "" {
-		return nil, fmt.Errorf("Repo config not present in environment")
-	}
-
-	if platformConfigString == "" {
-		return nil, fmt.Errorf("Platform config not present in environment")
-	}
-
-	// decode blobs
-	var tediumConfig TediumConfig
-	decoder := json.NewDecoder(strings.NewReader(tediumConfigStr))
+	var job Job
+	decoder := json.NewDecoder(strings.NewReader(jobStr))
 	decoder.DisallowUnknownFields()
-	err := decoder.Decode(&tediumConfig)
+	err := decoder.Decode(&job)
 	if err != nil {
-		return nil, fmt.Errorf("Error decoding Tedium config: %w", err)
+		return nil, fmt.Errorf("Error decoding job: %w", err)
 	}
 
-	var choreSpec ChoreSpec
-	decoder = json.NewDecoder(strings.NewReader(choreSpecStr))
-	decoder.DisallowUnknownFields()
-	err = decoder.Decode(&choreSpec)
-	if err != nil {
-		return nil, fmt.Errorf("Error decoding chore spec: %w", err)
-	}
-
-	var repo Repo
-	decoder = json.NewDecoder(strings.NewReader(repoStr))
-	decoder.DisallowUnknownFields()
-	err = decoder.Decode(&repo)
-	if err != nil {
-		return nil, fmt.Errorf("Error decoding repo: %w", err)
-	}
-
-	var repoConfig ResolvedRepoConfig
-	decoder = json.NewDecoder(strings.NewReader(repoConfigStr))
-	decoder.DisallowUnknownFields()
-	err = decoder.Decode(&repoConfig)
-	if err != nil {
-		return nil, fmt.Errorf("Error decoding repo config: %w", err)
-	}
-
-	var platformConfig PlatformConfig
-	decoder = json.NewDecoder(strings.NewReader(platformConfigString))
-	decoder.DisallowUnknownFields()
-	err = decoder.Decode(&platformConfig)
-	if err != nil {
-		return nil, fmt.Errorf("Error decoding platform config: %w", err)
-	}
-
-	return &Job{
-		Config:         &tediumConfig,
-		Repo:           &repo,
-		RepoConfig:     &repoConfig,
-		Chore:          &choreSpec,
-		PlatformConfig: &platformConfig,
-	}, nil
+	return &job, nil
 }
