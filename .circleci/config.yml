@@ -41,6 +41,9 @@ jobs:
       - attach_workspace:
           at: .
       - run:
+          name: Install dependencies
+          command: sudo apt update && sudo apt install -y --no-install-recommends libbtrfs-dev libgpgme-dev
+      - run:
           name: Build
           command: make build
 
