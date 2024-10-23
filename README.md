@@ -104,7 +104,7 @@ executor:
 # Required.
 platforms:
 
-  # Keys can be any string
+  # Keys can be any string, they are only used as an ID in logging.
   my-gitea:
 
     # Platform type; "gitea" only for now, "github" support coming soon.
@@ -123,20 +123,22 @@ platforms:
 
     # Auth for this platform.
     # Values follow the same format as auth config below.
-    # Takes priority over per-domain auth defined below.
-    # Optional.
+    # Optional - see auth docs below.
     auth:
       token: "abc123"
 
 # Per-domain platform authentication.
-# Used for all communication with matching platforms, including API requests and Git push/pull.
-# Optional.
+# Optional - see auth docs below.
 auth:
 
   # Keys must be plain domains.
   gitea.example.com:
-    # Token auth is the only supported mechanism at the moment.
     token: "abc123"
+
+  github.com:
+    clientId: "abc123",
+    privateKeyFile: "/run/secrets/github.pem",
+    installationId: "123456"
 
 # Location on disk to store all repos that are cloned (target repos, chores, extended configs, etc).
 # Optional, defaults to a temporary path.
@@ -170,6 +172,21 @@ autoEnrollment:
       - "https://github.com/example/tedium-config-go-projects.git"
     chores: []
 ```
+
+<details>
+<summary>Auth Configuration</summary>
+
+#### Precedence
+
+- When interacting with a platform directly (e.g. enumerating repositories or opening a PR) or when cloning a target repository, the first of the following auth configs that is defined will be used:
+  - The `auth` config for that platform.
+  - The first entry in the top-level `extraAuth` block with a matching domain.
+  - The first platform `auth` config found where the `endpoint` domain matches.
+- When cloning repositories other than target repositories (e.g. chores or shared Tedium configs), the first of the following auth configs that is defined will be used:
+  - The first entry in the top-level `extraAuth` block with a matching domain.
+  - The first platform `auth` config found where the `endpoint` domain matches.
+- Note that domains will be considered to match when the domain in config has a more specific subdomain than the one being searched for. This is mostly to allow auth configured for `api.github.com` to be used for repos cloned from `github.com`.
+</details>
 
 ### Repo Configuration
 
