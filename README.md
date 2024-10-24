@@ -106,7 +106,7 @@ platforms:
 
     # ID can be any string and must be unique between platforms.
     # Required.
-  - id: my-gitea
+  - id: "my-gitea"
 
     # Platform type ("gitea" or "github")
     # Required.
