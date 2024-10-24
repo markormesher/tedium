@@ -23,7 +23,7 @@ type GitHubPlatform struct {
 
 func (p *GitHubPlatform) Init(conf *schema.TediumConfig) error {
 	// resolve the auth config that should be used
-	p.finalAuth = conf.GetAuthConfig(p.Endpoint)
+	p.finalAuth = conf.GetAuthConfigForPlatform(p.originalPlatformConfig)
 
 	// get auth token for the installation
 	if p.finalAuth.InternalToken == "" {

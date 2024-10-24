@@ -104,10 +104,11 @@ executor:
 # Required.
 platforms:
 
-  # Keys can be any string, they are only used as an ID in logging.
-  my-gitea:
+    # ID can be any string and must be unique between platforms.
+    # Required.
+  - id: my-gitea
 
-    # Platform type; "gitea" only for now, "github" support coming soon.
+    # Platform type ("gitea" or "github")
     # Required.
     type: "gitea"
 
@@ -131,13 +132,13 @@ platforms:
 # Optional - see "Auth Configuration" below.
 extraAuth:
 
-  # Keys must be plain domains.
-  gitea.example.com:
-    # Token auth example - see "Auth Configuration" below.
+  # Token auth example - see "Auth Configuration" below.
+  # Domain pattern is a regex as-per the Go standard library.
+  - domainPattern: ".*\\.gitea\\.com"
     token: "abc123"
 
-  github.com:
     # App auth example - see "Auth Configuration" below.
+  - domainPattern: ".*\\.github\\.com"
     clientId: "abc123",
     privateKeyFile: "/run/secrets/github.pem",
     installationId: "123456"
@@ -198,14 +199,25 @@ Tedium can act as a user or an application when interacting with Git platforms, 
 #### Note: Auth Precedence
 
 - When interacting with a platform API (e.g. to open a PR) or when cloning a target repository, the first of the following auth configs that is found will be used:
-  - The `platforms.<id>.auth` config for that platform.
-  - The first `extraAuth[i]` block with a matching domain.
-  - The first `platforms.*.auth` config found where the `endpoint` domain matches.
+  - The `platforms[].auth` config for that platform.
+  - The first `extraAuth[]` block with a matching domain pattern.
 - When cloning repositories other than target repositories (e.g. chores or shared Tedium configs), the first of the following auth configs that is found will be used:
-  - The first `extraAuth[i]` block with a matching domain.
-  - The first `platforms.*.auth` config found where the `endpoint` domain matches.
-- Note that domains will be considered to match when they are equal or when the domain in the config has a more specific subdomain.
-  - For example, auth configured for `api.github.com` could be used for repos cloned from `github.com`.
+  - The first `extraAuth[]` block with a matching domain.
+  - The first `platforms[].auth` config found where the platform `endpoint` domain matches exactly **or** the domain pattern matches.
+
+#### Note: GitHub Domains
+
+The GitHub API is served from a different domain to its repos: `api.github.com` vs `github.com`. To keep your config compact when using GitHub, specify a domain pattern as well as an endpoint, as follows:
+
+```yaml
+platforms:
+  - id: "github"
+    type: "github"
+    endpoint: "https://api.github.com"
+    auth:
+      domainPattern: ".*\\.github\\.com"
+      # token or app details
+```
 
 </details>
 

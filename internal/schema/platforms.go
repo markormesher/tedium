@@ -11,6 +11,7 @@ import (
 
 // PlatformConfig defines a Git platform from which repos can be discovered, such as Gitea or GitHub.
 type PlatformConfig struct {
+	Id       string      `json:"id" yaml:"id"`
 	Type     string      `json:"type" yaml:"type"`
 	Endpoint string      `json:"endpoint" yaml:"endpoint"`
 	Auth     *AuthConfig `json:"auth" yaml:"auth"`
@@ -28,6 +29,10 @@ type PlatformConfig struct {
 
 // AuthConfig defines how to authenticate with a platform.
 type AuthConfig struct {
+	// domain pattern to match when searching for auth to clone a repo
+	DomainPatternRaw string `json:"domainPattern" yaml:"domainPattern"`
+	DomainPattern    *regexp.Regexp
+
 	// tokens for gitea
 	Token string `json:"token" yaml:"token"`
 

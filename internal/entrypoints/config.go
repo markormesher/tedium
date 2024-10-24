@@ -49,7 +49,7 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo, platf
 			// it's not the target repo, so we need to instantiate the repo and read the config from disk
 			configRepo := &schema.Repo{
 				CloneUrl:   *url,
-				AuthConfig: conf.GetAuthConfig(*url),
+				AuthConfig: conf.GetAuthConfigForClone(*url),
 			}
 			err := git.CloneAndUpdateRepo(configRepo, conf)
 			if err != nil {
@@ -94,7 +94,7 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo, platf
 		url := mergedConfig.Chores[choreIdx].CloneUrl
 		choreRepo := &schema.Repo{
 			CloneUrl:   url,
-			AuthConfig: conf.GetAuthConfig(url),
+			AuthConfig: conf.GetAuthConfigForClone(url),
 		}
 		err := git.CloneAndUpdateRepo(choreRepo, conf)
 		if err != nil {

@@ -23,7 +23,7 @@ type GiteaPlatform struct {
 
 func (p *GiteaPlatform) Init(conf *schema.TediumConfig) error {
 	// resolve the auth config that should be used
-	p.finalAuth = conf.GetAuthConfig(p.Endpoint)
+	p.finalAuth = conf.GetAuthConfigForPlatform(p.originalPlatformConfig)
 
 	err := p.loadBotProfile(conf)
 	if err != nil {

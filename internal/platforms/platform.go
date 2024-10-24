@@ -25,15 +25,18 @@ func FromConfig(platformConfig *schema.PlatformConfig) (Platform, error) {
 	switch platformConfig.Type {
 	case "gitea":
 		p := &GiteaPlatform{
-			Endpoint: platformConfig.Endpoint,
-			Auth:     platformConfig.Auth,
+			// TODO: make this neater - can we have something like GiteaPlatform.from(...) ?
+			originalPlatformConfig: platformConfig,
+			Endpoint:               platformConfig.Endpoint,
+			Auth:                   platformConfig.Auth,
 		}
 		return p, nil
 
 	case "github":
 		p := &GitHubPlatform{
-			Endpoint: platformConfig.Endpoint,
-			Auth:     platformConfig.Auth,
+			originalPlatformConfig: platformConfig,
+			Endpoint:               platformConfig.Endpoint,
+			Auth:                   platformConfig.Auth,
 		}
 		return p, nil
 	}
