@@ -183,8 +183,8 @@ Tedium can act as a user or an application when interacting with Git platforms, 
 #### Acting as a User
 
 - Generate a token for your Tedium service user and provide it in the `token` field.
-- Note that the user must have editor permissions on your repositories. For most platforms this will mean making them a collaborator.
-- It is *not* recommended to use a token for your own personal user.
+  - Note that the user must be a collaborator on your repositories.
+  - It is *not* recommended to use a token for your own personal user.
 
 #### Acting as an Application
 
@@ -193,18 +193,19 @@ Tedium can act as a user or an application when interacting with Git platforms, 
     - The app needs read/write permissions on commits, content, issues, and pull requests.
     - After installing the app the installation ID can be found can be found at the end of the URL on the app settings page.
   - On Gitea: TODO
-- Provide the `clientId`, `privateKey` or `privateKeyFile`, and the `installationId` for your app and its installation in your profile or organisation.
+- Provide the `clientId` and `privateKey` or `privateKeyFile` for your app, and the `installationId` for its installation in your profile/organisation.
 
 #### Note: Auth Precedence
 
-- When interacting with a platform directly (e.g. enumerating repositories or opening a PR) or when cloning a target repository, the first of the following auth configs that is defined will be used:
+- When interacting with a platform API (e.g. to open a PR) or when cloning a target repository, the first of the following auth configs that is found will be used:
   - The `platforms.<id>.auth` config for that platform.
   - The first `extraAuth[i]` block with a matching domain.
   - The first `platforms.*.auth` config found where the `endpoint` domain matches.
-- When cloning repositories other than target repositories (e.g. chores or shared Tedium configs), the first of the following auth configs that is defined will be used:
+- When cloning repositories other than target repositories (e.g. chores or shared Tedium configs), the first of the following auth configs that is found will be used:
   - The first `extraAuth[i]` block with a matching domain.
   - The first `platforms.*.auth` config found where the `endpoint` domain matches.
-- Note that domains will be considered to match when they are equal or when the domain in config has a more specific subdomain. This is mostly to allow auth configured for `api.github.com` to be used for repos cloned from `github.com`.
+- Note that domains will be considered to match when they are equal or when the domain in the config has a more specific subdomain.
+  - For example, auth configured for `api.github.com` could be used for repos cloned from `github.com`.
 
 </details>
 
