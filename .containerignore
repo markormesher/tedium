@@ -1,2 +1,4 @@
 .git/
 build/
+config*.json
+config*.yml

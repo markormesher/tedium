@@ -80,8 +80,8 @@ func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 	for id := range conf.Platforms {
 		platformConfig := &conf.Platforms[id]
 
-		l.Info("Initialising platform", "platform", id)
-		platform, err := platforms.FromConfig(platformConfig)
+		l.Info("Initialising platform", "endpoint", platformConfig.Endpoint)
+		platform, err := platforms.FromConfig(conf, platformConfig)
 		if err != nil {
 			l.Error("Error initialising platform", "error", err)
 			os.Exit(1)

@@ -17,7 +17,7 @@ func FinaliseChore() {
 
 	job.ModifyToRunInsideExecutor()
 
-	platform, err := platforms.FromConfig(job.PlatformConfig)
+	platform, err := platforms.FromConfig(job.Config, job.PlatformConfig)
 	if err != nil {
 		l.Error("Error getting platform from environment", "error", err)
 		os.Exit(1)
@@ -29,7 +29,7 @@ func FinaliseChore() {
 		os.Exit(1)
 	}
 
-	changed, err := git.CommitAndPushIfChanged(job, platform.BotProfile())
+	changed, err := git.CommitAndPushIfChanged(job, platform.Profile())
 	if err != nil {
 		l.Error("Error committing changes", "error", err)
 		os.Exit(1)

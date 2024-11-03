@@ -14,18 +14,30 @@ type GiteaPlatform struct {
 	Auth     *schema.AuthConfig
 
 	// private state
-	originalPlatformConfig *schema.PlatformConfig
-	finalAuth              *schema.AuthConfig
-	botProfile             *schema.PlatformBotProfile
+	profile *schema.PlatformProfile
+}
+
+func giteaPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (*GiteaPlatform, error) {
+	auth := conf.GetAuthConfigForPlatform(platformConfig)
+
+	if auth == nil {
+		return nil, fmt.Errorf("Cannot construct Gitea platform without auth config", "endpoint", platformConfig.Endpoint)
+	}
+
+	if auth.Type != schema.AuthConfigTypeUserToken {
+		return nil, fmt.Errorf("Cannot construct Gitea platform with auth type other than user token", "endpoint", platformConfig.Endpoint)
+	}
+
+	return &GiteaPlatform{
+		Endpoint: platformConfig.Endpoint,
+		Auth:     auth,
+	}, nil
 }
 
 // interface methods
 
 func (p *GiteaPlatform) Init(conf *schema.TediumConfig) error {
-	// resolve the auth config that should be used
-	p.finalAuth = conf.GetAuthConfigForPlatform(p.originalPlatformConfig)
-
-	err := p.loadBotProfile(conf)
+	err := p.loadProfile(conf)
 	if err != nil {
 		return err
 	}
@@ -37,8 +49,8 @@ func (p *GiteaPlatform) Deinit() error {
 	return nil
 }
 
-func (p *GiteaPlatform) BotProfile() *schema.PlatformBotProfile {
-	return p.botProfile
+func (p *GiteaPlatform) Profile() *schema.PlatformProfile {
+	return p.profile
 }
 
 func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
@@ -73,7 +85,7 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	var output []schema.Repo
 	for _, repo := range repoData.Data {
 		output = append(output, schema.Repo{
-			AuthConfig:    p.finalAuth,
+			AuthConfig:    p.Auth,
 			CloneUrl:      repo.CloneUrl,
 			OwnerName:     repo.Owner.Username,
 			Name:          repo.Name,
@@ -194,19 +206,30 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 // internal methods
 
-func (p *GiteaPlatform) authedRequest() (client *resty.Client, request *resty.Request) {
-	client = resty.New()
-	request = client.NewRequest()
-	if p.finalAuth != nil && p.finalAuth.Token != "" {
-		request.SetHeader("Authorization", fmt.Sprintf("token %s", p.finalAuth.Token))
+func (p *GiteaPlatform) authedRequest() (*resty.Client, *resty.Request) {
+	client := resty.New()
+	request := client.NewRequest()
+
+	if p.Auth == nil {
+		panic("No auth config present for Gitea platform . This condition should have been guarded against.")
 	}
-	return
+
+	if p.Auth.Type == schema.AuthConfigTypeUserToken {
+		request.SetHeader("Authorization", fmt.Sprintf("token %s", p.Auth.Token))
+	}
+
+	if p.Auth.Type == schema.AuthConfigTypeApp {
+		// TODO: support app auth for Gitea
+		panic("Not supported yet")
+	}
+
+	return client, request
 }
 
-func (p *GiteaPlatform) loadBotProfile(conf *schema.TediumConfig) error {
+func (p *GiteaPlatform) loadProfile(conf *schema.TediumConfig) error {
 	var user struct {
-		Username string `json:"login"`
-		Email    string `json:"email"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
 	}
 
 	_, req := p.authedRequest()
@@ -214,16 +237,16 @@ func (p *GiteaPlatform) loadBotProfile(conf *schema.TediumConfig) error {
 	response, err := req.Get(fmt.Sprintf("%s/user", p.Endpoint))
 
 	if err != nil {
-		return fmt.Errorf("Failed to load bot user: %v", err)
+		return fmt.Errorf("Failed to load user profile: %v", err)
 	}
 
 	if response.IsError() {
-		return fmt.Errorf("Failed to load bot user, status: %v", response.Status())
+		return fmt.Errorf("Failed to load user profile, status: %v", response.Status())
 	}
 
-	p.botProfile = &schema.PlatformBotProfile{
-		Username: user.Username,
-		Email:    user.Email,
+	p.profile = &schema.PlatformProfile{
+		Name:  user.Name,
+		Email: user.Email,
 	}
 
 	return nil

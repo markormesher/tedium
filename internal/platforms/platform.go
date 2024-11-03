@@ -13,7 +13,7 @@ type Platform interface {
 	Init(conf *schema.TediumConfig) error
 	Deinit() error
 
-	BotProfile() *schema.PlatformBotProfile
+	Profile() *schema.PlatformProfile
 
 	DiscoverRepos() ([]schema.Repo, error)
 	RepoHasTediumConfig(repo *schema.Repo) (bool, error)
@@ -21,22 +21,19 @@ type Platform interface {
 	OpenOrUpdatePullRequest(job *schema.Job) error
 }
 
-func FromConfig(platformConfig *schema.PlatformConfig) (Platform, error) {
+func FromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (Platform, error) {
 	switch platformConfig.Type {
 	case "gitea":
-		p := &GiteaPlatform{
-			// TODO: make this neater - can we have something like GiteaPlatform.from(...) ?
-			originalPlatformConfig: platformConfig,
-			Endpoint:               platformConfig.Endpoint,
-			Auth:                   platformConfig.Auth,
+		p, err := giteaPlatformFromConfig(conf, platformConfig)
+		if err != nil {
+			return nil, fmt.Errorf("Error building Gitea platform: %w", err)
 		}
 		return p, nil
 
 	case "github":
-		p := &GitHubPlatform{
-			originalPlatformConfig: platformConfig,
-			Endpoint:               platformConfig.Endpoint,
-			Auth:                   platformConfig.Auth,
+		p, err := githubPlatformFromConfig(conf, platformConfig)
+		if err != nil {
+			return nil, fmt.Errorf("Error building GitHub platform: %w", err)
 		}
 		return p, nil
 	}

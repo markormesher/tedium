@@ -126,6 +126,7 @@ platforms:
     # Values follow the same format as auth config below.
     # Optional - see "Auth Configuration" below.
     auth:
+      type: "user_token"
       token: "abc123"
 
 # Per-domain platform authentication.
@@ -135,10 +136,12 @@ extraAuth:
   # Token auth example - see "Auth Configuration" below.
   # Domain pattern is a regex as-per the Go standard library.
   - domainPattern: ".*\\.gitea\\.com"
+    type: "user_token"
     token: "abc123"
 
     # App auth example - see "Auth Configuration" below.
   - domainPattern: ".*\\.github\\.com"
+    type: "app"
     clientId: "abc123",
     privateKeyFile: "/run/secrets/github.pem",
     installationId: "123456"
@@ -183,15 +186,18 @@ Tedium can act as a user or an application when interacting with Git platforms, 
 
 #### Acting as a User
 
+- Set `type: "user_token"`.
 - Generate a token for your Tedium service user and provide it in the `token` field.
+  - The token needs read/write permissions on contents, issues, and pull requests. For GitHub it must be a "classic" token, as new-style fine-grain tokens do not yet allow you to push to repos as a collaborator.
   - Note that the user must be a collaborator on your repositories.
   - It is *not* recommended to use a token for your own personal user.
 
 #### Acting as an Application
 
+- Set `type: "app"`.
 - To create an application:
   - On GitHub: Settings > Developer Settings > New GitHub App
-    - The app needs read/write permissions on commits, content, issues, and pull requests.
+    - The app needs read/write permissions on contents, issues, and pull requests.
     - After installing the app the installation ID can be found can be found at the end of the URL on the app settings page.
   - On Gitea: TODO
 - Provide the `clientId` and `privateKey` or `privateKeyFile` for your app, and the `installationId` for its installation in your profile/organisation.
