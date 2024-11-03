@@ -47,7 +47,7 @@ The primary executor is Kubernetes, as Tedium is designed to run on a regular ca
 
 Platforms are where repos are hosted. Tedium uses them to discover repos to operate on, pull and push them, and manage PRs.
 
-So far only Gitea is supported, but [GitHub support](https://github.com/markormesher/tedium/issues/1) is coming soon.
+GitHub and Gitea are supported.
 
 Each run of Tedium can target multiple platforms at the same time (see [Configuration](#-configuration) below).
 
