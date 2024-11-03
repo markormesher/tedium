@@ -213,7 +213,6 @@ func CommitAndPushIfChanged(job *schema.Job, profile *schema.PlatformProfile) (b
 	reportRepoState(realRepo, "commit: after")
 
 	auth := repoAuth(job.Repo)
-	l.Info("Using auth for push", "auth", auth)
 	err = realRepo.Push(&git.PushOptions{
 		Force: false,
 		Auth:  auth,
