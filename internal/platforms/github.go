@@ -264,18 +264,17 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
 	switch p.Auth.Type {
 	case schema.AuthConfigTypeUserToken:
-		// TODO: get email from different API
-
-		var userProfile struct {
-			Email string `json:"email"`
+		var userEmails []struct {
+			Email   string `json:"email"`
+			Primary bool   `json:"primary"`
 		}
 
 		_, req, err := p.authedUserRequest()
 		if err != nil {
 			return fmt.Errorf("Error loading user profile: %w", err)
 		}
-		req.SetResult(&userProfile)
-		response, err := req.Get(fmt.Sprintf("%s/user", p.Endpoint))
+		req.SetResult(&userEmails)
+		response, err := req.Get(fmt.Sprintf("%s/user/emails", p.Endpoint))
 
 		if err != nil {
 			return fmt.Errorf("Failed to load user profile: %w", err)
@@ -285,10 +284,20 @@ func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
 			return fmt.Errorf("Failed to load user profile: %v", response.Status())
 		}
 
-		l.Info("Profile", "profile", userProfile)
+		primaryEmail := ""
+		for _, email := range userEmails {
+			if email.Primary {
+				primaryEmail = email.Email
+				break
+			}
+		}
+
+		if primaryEmail == "" {
+			return fmt.Errorf("Failed to load user profile: no primary email addresses")
+		}
 
 		p.profile = &schema.PlatformProfile{
-			Email: userProfile.Email,
+			Email: primaryEmail,
 		}
 
 		return nil
