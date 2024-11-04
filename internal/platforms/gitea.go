@@ -245,7 +245,6 @@ func (p *GiteaPlatform) loadProfile(conf *schema.TediumConfig) error {
 	}
 
 	p.profile = &schema.PlatformProfile{
-		Name:  user.Name,
 		Email: user.Email,
 	}
 

@@ -201,7 +201,6 @@ func CommitAndPushIfChanged(job *schema.Job, profile *schema.PlatformProfile) (b
 	_, err = worktree.Commit(msg, &git.CommitOptions{
 		All: true,
 		Author: &object.Signature{
-			Name:  profile.Name,
 			Email: profile.Email,
 			When:  time.Now(),
 		},

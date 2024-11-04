@@ -105,6 +105,5 @@ func (pc PlatformConfig) AcceptsRepo(fullName string) bool {
 }
 
 type PlatformProfile struct {
-	Name  string
 	Email string
 }

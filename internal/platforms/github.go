@@ -264,8 +264,9 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
 	switch p.Auth.Type {
 	case schema.AuthConfigTypeUserToken:
+		// TODO: get email from different API
+
 		var userProfile struct {
-			Name  string `json:"name"`
 			Email string `json:"email"`
 		}
 
@@ -284,8 +285,9 @@ func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
 			return fmt.Errorf("Failed to load user profile: %v", response.Status())
 		}
 
+		l.Info("Profile", "profile", userProfile)
+
 		p.profile = &schema.PlatformProfile{
-			Name:  userProfile.Name,
 			Email: userProfile.Email,
 		}
 
@@ -293,7 +295,6 @@ func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
 
 	case schema.AuthConfigTypeApp:
 		var appProfile struct {
-			Name string `json:"name"`
 			Slug string `json:"slug"`
 		}
 
@@ -313,7 +314,6 @@ func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
 		}
 
 		p.profile = &schema.PlatformProfile{
-			Name:  appProfile.Name,
 			Email: appProfile.Slug + "[bot]@users.noreply.github.com",
 		}
 
