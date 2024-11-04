@@ -206,29 +206,8 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 // internal methods
 
-func (p *GiteaPlatform) authedRequest() (*resty.Client, *resty.Request) {
-	client := resty.New()
-	request := client.NewRequest()
-
-	if p.Auth == nil {
-		panic("No auth config present for Gitea platform . This condition should have been guarded against.")
-	}
-
-	if p.Auth.Type == schema.AuthConfigTypeUserToken {
-		request.SetHeader("Authorization", fmt.Sprintf("token %s", p.Auth.Token))
-	}
-
-	if p.Auth.Type == schema.AuthConfigTypeApp {
-		// TODO: support app auth for Gitea
-		panic("Not supported yet")
-	}
-
-	return client, request
-}
-
 func (p *GiteaPlatform) loadProfile(conf *schema.TediumConfig) error {
 	var user struct {
-		Name  string `json:"name"`
 		Email string `json:"email"`
 	}
 
@@ -249,4 +228,24 @@ func (p *GiteaPlatform) loadProfile(conf *schema.TediumConfig) error {
 	}
 
 	return nil
+}
+
+func (p *GiteaPlatform) authedRequest() (*resty.Client, *resty.Request) {
+	client := resty.New()
+	request := client.NewRequest()
+
+	if p.Auth == nil {
+		panic("No auth config present for Gitea platform . This condition should have been guarded against.")
+	}
+
+	if p.Auth.Type == schema.AuthConfigTypeUserToken {
+		request.SetHeader("Authorization", fmt.Sprintf("token %s", p.Auth.Token))
+	}
+
+	if p.Auth.Type == schema.AuthConfigTypeApp {
+		// TODO: support app auth for Gitea
+		panic("Not supported yet")
+	}
+
+	return client, request
 }
