@@ -172,7 +172,7 @@ func CheckoutBranchForJob(job *schema.Job) error {
 	return nil
 }
 
-func CommitAndPushIfChanged(job *schema.Job, botProfile *schema.PlatformBotProfile) (bool, error) {
+func CommitAndPushIfChanged(job *schema.Job, profile *schema.PlatformProfile) (bool, error) {
 	realRepo, worktree, err := openRepo(job.Repo)
 	if err != nil {
 		return false, err
@@ -201,8 +201,7 @@ func CommitAndPushIfChanged(job *schema.Job, botProfile *schema.PlatformBotProfi
 	_, err = worktree.Commit(msg, &git.CommitOptions{
 		All: true,
 		Author: &object.Signature{
-			Name:  botProfile.Username,
-			Email: botProfile.Email,
+			Email: profile.Email,
 			When:  time.Now(),
 		},
 	})
@@ -254,7 +253,7 @@ func ReadFile(repo *schema.Repo, pathCandidates []string) ([]byte, error) {
 		return file, nil
 	}
 
-	return nil, fmt.Errorf("Could not ready from any candidate path: %v", pathCandidates)
+	return nil, fmt.Errorf("Could not read from any candidate path: %v", pathCandidates)
 }
 
 func repoAuth(repo *schema.Repo) transport.AuthMethod {
@@ -263,19 +262,17 @@ func repoAuth(repo *schema.Repo) transport.AuthMethod {
 		return nil
 	}
 
-	if authConfig.Token != "" {
-		// token -> basic auth? yep, gitea and github both want it this way
+	if authConfig.Type == schema.AuthConfigTypeUserToken {
 		return &http.BasicAuth{
 			Username: "x-access-token",
 			Password: authConfig.Token,
 		}
 	}
 
-	if authConfig.InternalToken != "" {
-		// token -> basic auth? yep, gitea and github both want it this way
+	if authConfig.Type == schema.AuthConfigTypeApp {
 		return &http.BasicAuth{
 			Username: "x-access-token",
-			Password: authConfig.InternalToken,
+			Password: authConfig.AppInstallationToken,
 		}
 	}
 

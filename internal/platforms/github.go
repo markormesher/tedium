@@ -15,42 +15,26 @@ type GitHubPlatform struct {
 
 	// private state
 	originalPlatformConfig *schema.PlatformConfig
-	finalAuth              *schema.AuthConfig
-	botProfile             *schema.PlatformBotProfile
+	profile                *schema.PlatformProfile
+}
+
+func githubPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (*GitHubPlatform, error) {
+	auth := conf.GetAuthConfigForPlatform(platformConfig)
+
+	if auth == nil {
+		return nil, fmt.Errorf("Cannot construct GitHub platform without auth config", "endpoint", platformConfig.Endpoint)
+	}
+
+	return &GitHubPlatform{
+		Endpoint: platformConfig.Endpoint,
+		Auth:     auth,
+	}, nil
 }
 
 // interface methods
 
 func (p *GitHubPlatform) Init(conf *schema.TediumConfig) error {
-	// resolve the auth config that should be used
-	p.finalAuth = conf.GetAuthConfig(p.Endpoint)
-
-	// get auth token for the installation
-	if p.finalAuth.InternalToken == "" {
-		var installationToken struct {
-			Token string `json:"token"`
-		}
-
-		_, req, err := p.authedAppRequest()
-		if err != nil {
-			return err
-		}
-		req.SetResult(&installationToken)
-		response, err := req.Post(fmt.Sprintf("%s/app/installations/%s/access_tokens", p.Endpoint, p.finalAuth.InstallationId))
-
-		if err != nil {
-			return fmt.Errorf("Error generating installation access token: %w", err)
-		}
-
-		if response.IsError() {
-			return fmt.Errorf("Error generating installation access token, status: %v", response.Status())
-		}
-
-		p.finalAuth.InternalToken = installationToken.Token
-	}
-
-	// load (and update, in the future) the bot profile
-	err := p.loadBotProfile(conf)
+	err := p.loadProfile(conf)
 	if err != nil {
 		return err
 	}
@@ -62,13 +46,14 @@ func (p *GitHubPlatform) Deinit() error {
 	return nil
 }
 
-func (p *GitHubPlatform) BotProfile() *schema.PlatformBotProfile {
-	return p.botProfile
+func (p *GitHubPlatform) Profile() *schema.PlatformProfile {
+	return p.profile
 }
 
 func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
-	var repoData struct {
-		Repos []struct {
+	switch p.Auth.Type {
+	case schema.AuthConfigTypeUserToken:
+		var repoData []struct {
 			Name          string `json:"name"`
 			CloneUrl      string `json:"clone_url"`
 			DefaultBranch string `json:"default_branch"`
@@ -76,38 +61,84 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 			Owner         struct {
 				Username string `json:"login"`
 			} `json:"owner"`
-		} `json:"repositories"`
+		}
+
+		_, req, err := p.authedUserRequest()
+		if err != nil {
+			return nil, fmt.Errorf("Error making GitHub API request: %w", err)
+		}
+
+		req.SetResult(&repoData)
+		response, err := req.Get(fmt.Sprintf("%s/user/repos?per_page=100", p.Endpoint))
+
+		if err != nil {
+			return nil, fmt.Errorf("Error making GitHub API request: %w", err)
+		}
+
+		if response.IsError() {
+			return nil, fmt.Errorf("Error making GitHub API request, status: %v", response.Status())
+		}
+
+		var output []schema.Repo
+		for _, repo := range repoData {
+			output = append(output, schema.Repo{
+				AuthConfig:    p.Auth,
+				CloneUrl:      repo.CloneUrl,
+				OwnerName:     repo.Owner.Username,
+				Name:          repo.Name,
+				DefaultBranch: repo.DefaultBranch,
+				Archived:      repo.Archived,
+			})
+		}
+
+		return output, nil
+
+	case schema.AuthConfigTypeApp:
+		var repoData struct {
+			Repos []struct {
+				Name          string `json:"name"`
+				CloneUrl      string `json:"clone_url"`
+				DefaultBranch string `json:"default_branch"`
+				Archived      bool   `json:"archived"`
+				Owner         struct {
+					Username string `json:"login"`
+				} `json:"owner"`
+			} `json:"repositories"`
+		}
+
+		_, req, err := p.authedInstallationRequest()
+		if err != nil {
+			return nil, fmt.Errorf("Error making GitHub API request: %w", err)
+		}
+
+		req.SetResult(&repoData)
+		response, err := req.Get(fmt.Sprintf("%s/installation/repositories?per_page=100", p.Endpoint))
+
+		if err != nil {
+			return nil, fmt.Errorf("Error making GitHub API request: %w", err)
+		}
+
+		if response.IsError() {
+			return nil, fmt.Errorf("Error making GitHub API request, status: %v", response.Status())
+		}
+
+		var output []schema.Repo
+		for _, repo := range repoData.Repos {
+			output = append(output, schema.Repo{
+				AuthConfig:    p.Auth,
+				CloneUrl:      repo.CloneUrl,
+				OwnerName:     repo.Owner.Username,
+				Name:          repo.Name,
+				DefaultBranch: repo.DefaultBranch,
+				Archived:      repo.Archived,
+			})
+		}
+
+		return output, nil
+
+	default:
+		return nil, fmt.Errorf("Unrecognised auth type: %s", p.Auth.Type)
 	}
-
-	_, req, err := p.authedInstallationRequest()
-	if err != nil {
-		return nil, fmt.Errorf("Error making GitHub API request: %w", err)
-	}
-
-	req.SetResult(&repoData)
-	response, err := req.Get(fmt.Sprintf("%s/installation/repositories?per_page=100", p.Endpoint))
-
-	if err != nil {
-		return nil, fmt.Errorf("Error making GitHub API request: %w", err)
-	}
-
-	if response.IsError() {
-		return nil, fmt.Errorf("Error making GitHub API request, status: %v", response.Status())
-	}
-
-	var output []schema.Repo
-	for _, repo := range repoData.Repos {
-		output = append(output, schema.Repo{
-			AuthConfig:    p.finalAuth,
-			CloneUrl:      repo.CloneUrl,
-			OwnerName:     repo.Owner.Username,
-			Name:          repo.Name,
-			DefaultBranch: repo.DefaultBranch,
-			Archived:      repo.Archived,
-		})
-	}
-
-	return output, nil
 }
 
 func (p *GitHubPlatform) RepoHasTediumConfig(repo *schema.Repo) (bool, error) {
@@ -126,10 +157,11 @@ func (p *GitHubPlatform) ReadRepoFile(repo *schema.Repo, pathCandidates []string
 	}
 
 	for _, path := range pathCandidates {
-		_, req, err := p.authedInstallationRequest()
+		_, req, err := p.authedUserOrInstallationRequest()
 		if err != nil {
 			return nil, fmt.Errorf("Failed to read file via GitHub API: %w", err)
 		}
+
 		req.SetResult(&repoFile)
 		response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.Endpoint, repo.OwnerName, repo.Name, path))
 		if err != nil {
@@ -170,10 +202,11 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 		} `json:"head"`
 	}
 
-	_, req, err := p.authedInstallationRequest()
+	_, req, err := p.authedUserOrInstallationRequest()
 	if err != nil {
 		return fmt.Errorf("Error fetching existing PRs: %w", err)
 	}
+
 	req.SetResult(&existingPrs)
 	response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/pulls", p.Endpoint, job.Repo.OwnerName, job.Repo.Name))
 	if err != nil {
@@ -199,10 +232,11 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 		"body":  job.Chore.PrBody(),
 	}
 
-	_, req, err = p.authedInstallationRequest()
+	_, req, err = p.authedUserOrInstallationRequest()
 	if err != nil {
-		return fmt.Errorf("Error opening or updating PR: %w", err)
+		return fmt.Errorf("Error fetching existing PRs: %w", err)
 	}
+
 	req.SetHeader("Content-type", "application/json")
 	req.SetBody(prBody)
 
@@ -227,21 +261,132 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 // internal methods
 
+func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
+	switch p.Auth.Type {
+	case schema.AuthConfigTypeUserToken:
+		var userEmails []struct {
+			Email   string `json:"email"`
+			Primary bool   `json:"primary"`
+		}
+
+		_, req, err := p.authedUserRequest()
+		if err != nil {
+			return fmt.Errorf("Error loading user profile: %w", err)
+		}
+		req.SetResult(&userEmails)
+		response, err := req.Get(fmt.Sprintf("%s/user/emails", p.Endpoint))
+
+		if err != nil {
+			return fmt.Errorf("Failed to load user profile: %w", err)
+		}
+
+		if response.IsError() {
+			return fmt.Errorf("Failed to load user profile: %v", response.Status())
+		}
+
+		primaryEmail := ""
+		for _, email := range userEmails {
+			if email.Primary {
+				primaryEmail = email.Email
+				break
+			}
+		}
+
+		if primaryEmail == "" {
+			return fmt.Errorf("Failed to load user profile: no primary email addresses")
+		}
+
+		p.profile = &schema.PlatformProfile{
+			Email: primaryEmail,
+		}
+
+		return nil
+
+	case schema.AuthConfigTypeApp:
+		var appProfile struct {
+			Slug string `json:"slug"`
+		}
+
+		_, req, err := p.authedAppRequest()
+		if err != nil {
+			return fmt.Errorf("Error loading app profile: %w", err)
+		}
+		req.SetResult(&appProfile)
+		response, err := req.Get(fmt.Sprintf("%s/app", p.Endpoint))
+
+		if err != nil {
+			return fmt.Errorf("Failed to load app profile: %w", err)
+		}
+
+		if response.IsError() {
+			return fmt.Errorf("Failed to load app profile: %v", response.Status())
+		}
+
+		p.profile = &schema.PlatformProfile{
+			Email: appProfile.Slug + "[bot]@users.noreply.github.com",
+		}
+
+		return nil
+
+	default:
+		return fmt.Errorf("Unrecognised auth type: %s", p.Auth.Type)
+	}
+}
+
+// three kinds of authenticated request:
+// - user: request using a simple token from config; this is used for all requests when operating as a user
+// - app: request using a JWT for an application; this is used when operating as an app for requests that ARE NOT related to a specific installation of the app
+// - installation: request using a short-lived token; this is used when operation an app for requests that ARE related to a specific installation
+
+func (p *GitHubPlatform) authedUserOrInstallationRequest() (*resty.Client, *resty.Request, error) {
+	switch p.Auth.Type {
+	case schema.AuthConfigTypeUserToken:
+		return p.authedUserRequest()
+
+	case schema.AuthConfigTypeApp:
+		return p.authedInstallationRequest()
+
+	default:
+		return nil, nil, fmt.Errorf("Unrecognised auth type: %s", p.Auth.Type)
+	}
+}
+
+func (p *GitHubPlatform) authedUserRequest() (*resty.Client, *resty.Request, error) {
+	client := resty.New()
+	request := client.NewRequest()
+
+	if p.Auth == nil {
+		return nil, nil, fmt.Errorf("Error making authed request to GitHub: no auth config found")
+	}
+
+	if p.Auth.Type != schema.AuthConfigTypeUserToken {
+		return nil, nil, fmt.Errorf("Error making user-authed request to GitHub: auth type is not %s", schema.AuthConfigTypeUserToken)
+	}
+
+	request.SetHeader("Authorization", fmt.Sprintf("Bearer %s", p.Auth.Token))
+	request.SetHeader("User-Agent", "Tedium")
+
+	return client, request, nil
+}
+
 func (p *GitHubPlatform) authedAppRequest() (*resty.Client, *resty.Request, error) {
 	client := resty.New()
 	request := client.NewRequest()
 
-	if p.finalAuth == nil {
+	if p.Auth == nil {
 		return nil, nil, fmt.Errorf("Error making authed request to GitHub: no auth config found")
 	}
 
-	jwt, err := p.finalAuth.GenerateJwt()
+	if p.Auth.Type != schema.AuthConfigTypeApp {
+		return nil, nil, fmt.Errorf("Error making app-authed request to GitHub: auth type is not %s", schema.AuthConfigTypeApp)
+	}
+
+	jwt, err := p.Auth.GenerateJwt()
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error making authed request to GitHub: %w", err)
 	}
 
 	request.SetHeader("Authorization", fmt.Sprintf("Bearer %s", jwt))
-
 	request.SetHeader("User-Agent", "Tedium")
 
 	return client, request, nil
@@ -251,45 +396,40 @@ func (p *GitHubPlatform) authedInstallationRequest() (*resty.Client, *resty.Requ
 	client := resty.New()
 	request := client.NewRequest()
 
-	if p.finalAuth == nil {
+	if p.Auth == nil {
 		return nil, nil, fmt.Errorf("Error making authed request to GitHub: no auth config found")
 	}
 
-	if p.finalAuth.InternalToken == "" {
-		return nil, nil, fmt.Errorf("Error making authed request to GitHub: no installation token")
+	if p.Auth.Type != schema.AuthConfigTypeApp {
+		return nil, nil, fmt.Errorf("Error making installation-authed request to GitHub: auth type is not %s", schema.AuthConfigTypeApp)
 	}
 
-	request.SetHeader("Authorization", fmt.Sprintf("Bearer %s", p.finalAuth.InternalToken))
+	// generate new installation token if we don't have one already
+	if p.Auth.AppInstallationToken == "" {
+		var installationToken struct {
+			Token string `json:"token"`
+		}
 
+		_, req, err := p.authedAppRequest()
+		if err != nil {
+			return nil, nil, err
+		}
+		req.SetResult(&installationToken)
+		response, err := req.Post(fmt.Sprintf("%s/app/installations/%s/access_tokens", p.Endpoint, p.Auth.InstallationId))
+
+		if err != nil {
+			return nil, nil, fmt.Errorf("Error generating installation access token: %w", err)
+		}
+
+		if response.IsError() {
+			return nil, nil, fmt.Errorf("Error generating installation access token, status: %v", response.Status())
+		}
+
+		p.Auth.AppInstallationToken = installationToken.Token
+	}
+
+	request.SetHeader("Authorization", fmt.Sprintf("Bearer %s", p.Auth.AppInstallationToken))
 	request.SetHeader("User-Agent", "Tedium")
 
 	return client, request, nil
-}
-
-func (p *GitHubPlatform) loadBotProfile(conf *schema.TediumConfig) error {
-	var appProfile struct {
-		Slug string `json:"slug"`
-	}
-
-	_, req, err := p.authedAppRequest()
-	if err != nil {
-		return fmt.Errorf("Error loading bot profile: %w", err)
-	}
-	req.SetResult(&appProfile)
-	response, err := req.Get(fmt.Sprintf("%s/app", p.Endpoint))
-
-	if err != nil {
-		return fmt.Errorf("Failed to load bot profile: %w", err)
-	}
-
-	if response.IsError() {
-		return fmt.Errorf("Failed to load bot profile: %v", response.Status())
-	}
-
-	p.botProfile = &schema.PlatformBotProfile{
-		Username: appProfile.Slug,
-		Email:    appProfile.Slug + "[bot]@users.noreply.github.com",
-	}
-
-	return nil
 }

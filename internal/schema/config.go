@@ -22,10 +22,10 @@ type TediumConfig struct {
 	Executor ExecutorConfig `json:"executor" yaml:"executor"`
 
 	// Platforms defines the set of repository hosting platforms that repos will be discovered from.
-	Platforms map[string]*PlatformConfig `json:"platforms" yaml:"platforms"`
+	Platforms []PlatformConfig `json:"platforms" yaml:"platforms"`
 
-	// Auth defines additional authentication details. The keys are expected to be domains.
-	Auth map[string]*AuthConfig `json:"auth" yaml:"auth"`
+	// Auth defines additional authentication details.
+	ExtraAuth []AuthConfig `json:"extraAuth" yaml:"extraAuth"`
 
 	// Images defines the container images used for Tedium-owned stages of execution
 	Images struct {
@@ -107,45 +107,64 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 	return &conf, nil
 }
 
-func (conf *TediumConfig) GetAuthConfig(endpointOrCloneUrl string) *AuthConfig {
-	// preference 1: take the auth from platform config, looking for exact matches on endpoint URL
+func (conf *TediumConfig) GetAuthConfigForPlatform(platformConfig *PlatformConfig) *AuthConfig {
+	// preference 1: auth for the platform
 
-	for i := range conf.Platforms {
-		if endpointOrCloneUrl == conf.Platforms[i].Endpoint {
-			auth := conf.Platforms[i].Auth
-			if auth != nil {
-				return auth
-			}
+	if platformConfig.Auth != nil {
+		return platformConfig.Auth
+	}
+
+	// preference 2: extra auth with a matching domain
+
+	endpointUrlParsed, err := url.Parse(platformConfig.Endpoint)
+	if err != nil {
+		l.Warn("Failed to parse URL for platform - will not use any extra auth entry", "endpoint", platformConfig.Endpoint, "error", err)
+		return nil
+	}
+	for i := range conf.ExtraAuth {
+		a := &conf.ExtraAuth[i]
+		if a.DomainPattern != nil && a.DomainPattern.MatchString(endpointUrlParsed.Host) {
+			return a
 		}
 	}
 
-	// preference 2: take the auth from config.Auth, looking for matches on domain
+	return nil
+}
 
-	parsed, err := url.Parse(endpointOrCloneUrl)
+func (conf *TediumConfig) GetAuthConfigForClone(cloneUrl string) *AuthConfig {
+	cloneUrlParsed, err := url.Parse(cloneUrl)
 	if err != nil {
-		l.Warn("Failed to parse domain from endpoint or clone URL - no auth will be used", "endpointOrCloneUrl", endpointOrCloneUrl)
+		l.Warn("Failed to parse URL for clone - no auth will be used", "url", cloneUrl, "error", err)
 		return nil
 	}
-	domain := parsed.Hostname()
 
-	if conf.Auth[domain] != nil {
-		return conf.Auth[domain]
+	cloneDomain := cloneUrlParsed.Host
+
+	// preference 1: extra auth with a matching domain pattern
+
+	for i := range conf.ExtraAuth {
+		a := &conf.ExtraAuth[i]
+		if a.DomainPattern != nil && a.DomainPattern.MatchString(cloneDomain) {
+			return a
+		}
 	}
 
-	// preference 3: go back to checking platforms for auth, matching on domain only
+	// preference 2: platform auth with matching endpoint domain or domain pattern
 
 	for i := range conf.Platforms {
-		parsed, err = url.Parse(conf.Platforms[i].Endpoint)
-		if err != nil {
-			l.Warn("Failed to parse domain from platform endpoint - it will not be used as an auth source", "endpoint", conf.Platforms[i].Endpoint)
+		platform := &conf.Platforms[i]
+		if platform.Auth == nil {
 			continue
 		}
 
-		if domain == parsed.Hostname() {
-			auth := conf.Platforms[i].Auth
-			if auth != nil {
-				return auth
-			}
+		endpointUrlParsed, err := url.Parse(platform.Endpoint)
+		if err != nil {
+			l.Warn("Failed to parse URL for platform - it will not be used for clone auth", "endpoint", platform.Endpoint, "error", err)
+			continue
+		}
+
+		if endpointUrlParsed.Host == cloneDomain || (platform.Auth.DomainPattern != nil && platform.Auth.DomainPattern.MatchString(cloneDomain)) {
+			return platform.Auth
 		}
 	}
 
@@ -170,6 +189,18 @@ func (conf TediumConfig) CompileRepoFilters() error {
 			}
 
 			p.RepoFilters[fi] = r
+		}
+	}
+
+	for i := range conf.ExtraAuth {
+		a := conf.ExtraAuth[i]
+		if a.DomainPatternRaw != "" {
+			r, err := regexp.Compile(a.DomainPatternRaw)
+			if err != nil {
+				return fmt.Errorf("Error compiling domain filter regex: %w", err)
+			}
+
+			a.DomainPattern = r
 		}
 	}
 

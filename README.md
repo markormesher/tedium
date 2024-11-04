@@ -47,7 +47,7 @@ The primary executor is Kubernetes, as Tedium is designed to run on a regular ca
 
 Platforms are where repos are hosted. Tedium uses them to discover repos to operate on, pull and push them, and manage PRs.
 
-So far only Gitea is supported, but [GitHub support](https://github.com/markormesher/tedium/issues/1) is coming soon.
+GitHub and Gitea are supported.
 
 Each run of Tedium can target multiple platforms at the same time (see [Configuration](#-configuration) below).
 
@@ -104,10 +104,11 @@ executor:
 # Required.
 platforms:
 
-  # Keys can be any string
-  my-gitea:
+    # ID can be any string and must be unique between platforms.
+    # Required.
+  - id: "my-gitea"
 
-    # Platform type; "gitea" only for now, "github" support coming soon.
+    # Platform type ("gitea" or "github")
     # Required.
     type: "gitea"
 
@@ -123,20 +124,27 @@ platforms:
 
     # Auth for this platform.
     # Values follow the same format as auth config below.
-    # Takes priority over per-domain auth defined below.
-    # Optional.
+    # Optional - see "Auth Configuration" below.
     auth:
+      type: "user_token"
       token: "abc123"
 
 # Per-domain platform authentication.
-# Used for all communication with matching platforms, including API requests and Git push/pull.
-# Optional.
-auth:
+# Optional - see "Auth Configuration" below.
+extraAuth:
 
-  # Keys must be plain domains.
-  gitea.example.com:
-    # Token auth is the only supported mechanism at the moment.
+  # Token auth example - see "Auth Configuration" below.
+  # Domain pattern is a regex as-per the Go standard library.
+  - domainPattern: ".*\\.gitea\\.com"
+    type: "user_token"
     token: "abc123"
+
+    # App auth example - see "Auth Configuration" below.
+  - domainPattern: ".*\\.github\\.com"
+    type: "app"
+    clientId: "abc123",
+    privateKeyFile: "/run/secrets/github.pem",
+    installationId: "123456"
 
 # Location on disk to store all repos that are cloned (target repos, chores, extended configs, etc).
 # Optional, defaults to a temporary path.
@@ -170,6 +178,54 @@ autoEnrollment:
       - "https://github.com/example/tedium-config-go-projects.git"
     chores: []
 ```
+
+<details>
+<summary>Auth Configuration</summary>
+
+Tedium can act as a user or an application when interacting with Git platforms, depending on how authentication is configured.
+
+#### Acting as a User
+
+- Set `type: "user_token"`.
+- Generate a token for your Tedium service user and provide it in the `token` field.
+  - The token needs read/write permissions on contents, issues, and pull requests. For GitHub it must be a "classic" token, as new-style fine-grain tokens do not yet allow you to push to repos as a collaborator.
+  - Note that the user must be a collaborator on your repositories.
+  - It is *not* recommended to use a token for your own personal user.
+
+#### Acting as an Application
+
+- Set `type: "app"`.
+- To create an application:
+  - On GitHub: Settings > Developer Settings > New GitHub App
+    - The app needs read/write permissions on contents, issues, and pull requests.
+    - After installing the app the installation ID can be found can be found at the end of the URL on the app settings page.
+  - On Gitea: TODO
+- Provide the `clientId` and `privateKey` or `privateKeyFile` for your app, and the `installationId` for its installation in your profile/organisation.
+
+#### Note: Auth Precedence
+
+- When interacting with a platform API (e.g. to open a PR) or when cloning a target repository, the first of the following auth configs that is found will be used:
+  - The `platforms[].auth` config for that platform.
+  - The first `extraAuth[]` block with a matching domain pattern.
+- When cloning repositories other than target repositories (e.g. chores or shared Tedium configs), the first of the following auth configs that is found will be used:
+  - The first `extraAuth[]` block with a matching domain.
+  - The first `platforms[].auth` config found where the platform `endpoint` domain matches exactly **or** the domain pattern matches.
+
+#### Note: GitHub Domains
+
+The GitHub API is served from a different domain to its repos: `api.github.com` vs `github.com`. To keep your config compact when using GitHub, specify a domain pattern as well as an endpoint, as follows:
+
+```yaml
+platforms:
+  - id: "github"
+    type: "github"
+    endpoint: "https://api.github.com"
+    auth:
+      domainPattern: ".*\\.github\\.com"
+      # token or app details
+```
+
+</details>
 
 ### Repo Configuration
 

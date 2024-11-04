@@ -11,6 +11,7 @@ import (
 
 // PlatformConfig defines a Git platform from which repos can be discovered, such as Gitea or GitHub.
 type PlatformConfig struct {
+	Id       string      `json:"id" yaml:"id"`
 	Type     string      `json:"type" yaml:"type"`
 	Endpoint string      `json:"endpoint" yaml:"endpoint"`
 	Auth     *AuthConfig `json:"auth" yaml:"auth"`
@@ -18,27 +19,30 @@ type PlatformConfig struct {
 	// RepoFiltersRaw specifies a list of Go regexes; if specified, only repos that match at least one filter will be processed.
 	RepoFiltersRaw []string `json:"repoFilters" yaml:"repoFilters"`
 	RepoFilters    []*regexp.Regexp
-
-	// populated during execution, not via config
-	BotProfile struct {
-		Username string
-		Email    string
-	}
 }
+
+var (
+	AuthConfigTypeUserToken = "user_token"
+	AuthConfigTypeApp       = "app"
+)
 
 // AuthConfig defines how to authenticate with a platform.
 type AuthConfig struct {
-	// tokens for gitea
+	// domain pattern to match when searching for auth to clone a repo
+	DomainPatternRaw string `json:"domainPattern" yaml:"domainPattern"`
+	DomainPattern    *regexp.Regexp
+
+	Type string `json:"type" yaml:"type"`
+
+	// type: user_token
 	Token string `json:"token" yaml:"token"`
 
-	// JWT for github apps (and maybe gitea in the future?)
-	ClientId         string `json:"clientId" yaml:"clientId"`
-	PrivateKeyString string `json:"privateKeyString" yaml:"privateKeyString"`
-	PrivateKeyFile   string `json:"privateKeyFile" yaml:"privateKeyFile"`
-	InstallationId   string `json:"installationId" yaml:"installationId"`
-
-	// used when any of the credentials above are "exchanged" for a different token that is used for future requests
-	InternalToken string `json:"doNotUse_internalToken"`
+	// type: app
+	ClientId             string `json:"clientId" yaml:"clientId"`
+	PrivateKeyString     string `json:"privateKeyString" yaml:"privateKeyString"`
+	PrivateKeyFile       string `json:"privateKeyFile" yaml:"privateKeyFile"`
+	InstallationId       string `json:"installationId" yaml:"installationId"`
+	AppInstallationToken string `json:"doNotUse_appInstallationToken"`
 }
 
 func (ac *AuthConfig) GenerateJwt() (string, error) {
@@ -100,7 +104,6 @@ func (pc PlatformConfig) AcceptsRepo(fullName string) bool {
 	return false
 }
 
-type PlatformBotProfile struct {
-	Username string
-	Email    string
+type PlatformProfile struct {
+	Email string
 }
