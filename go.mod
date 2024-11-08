@@ -1,6 +1,6 @@
 module github.com/markormesher/tedium
 
-go 1.23.2
+go 1.23.3
 
 require (
 	github.com/containers/podman/v5 v5.2.5
