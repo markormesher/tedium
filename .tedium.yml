@@ -3,4 +3,5 @@ extends:
 
 chores:
   - cloneUrl: "https://github.com/markormesher/tedium-chores"
-    directory: "tedium-testing"
+    branch: "mormesher/taskfile-chore"
+    directory: "generate-taskfile"
