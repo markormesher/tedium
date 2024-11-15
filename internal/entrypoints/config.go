@@ -56,7 +56,7 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo, platf
 				return nil, fmt.Errorf("Failed to instantiate repo: %w", err)
 			}
 
-			configContents, err = git.ReadFile(configRepo, utils.AddYamlJsonExtensions("index"))
+			configContents, err = git.ReadFile(configRepo, "", utils.AddYamlJsonExtensions("index"))
 			if err != nil {
 				return nil, fmt.Errorf("Failed to read config file out of repo: %w", err)
 			}
@@ -137,7 +137,7 @@ func mergeRepoConfigs(a, b *schema.RepoConfig) (*schema.RepoConfig, error) {
 }
 
 func readChoreSpec(choreRepo *schema.Repo, choreConfig *schema.RepoChoreConfig) (*schema.ChoreSpec, error) {
-	choreSpecFile, err := git.ReadFile(choreRepo, utils.AddYamlJsonExtensions((fmt.Sprintf("%s/chore", choreConfig.Directory))))
+	choreSpecFile, err := git.ReadFile(choreRepo, choreConfig.Branch, utils.AddYamlJsonExtensions((fmt.Sprintf("%s/chore", choreConfig.Directory))))
 	if err != nil {
 		return nil, fmt.Errorf("Error reading chore spec file: %v", err)
 	}

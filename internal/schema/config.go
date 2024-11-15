@@ -54,6 +54,12 @@ type RepoConfig struct {
 type RepoChoreConfig struct {
 	CloneUrl  string `json:"cloneUrl" yaml:"cloneUrl"`
 	Directory string `json:"directory" yaml:"directory"`
+
+	// Branch specifies the bracnh to read the chore definition from. If blank the default branch will be used.
+	Branch string `json:"branch" yaml:"branch"`
+
+	// Environment specifies additional environment variables to be passed to all stages of chore execution. Variables must not start with "TEDIUM_.
+	Environment map[string]string `json:"environment" yaml:"environment"`
 }
 
 // ResolvedRepoConfig is the result of taking a target repo, following all "extends" links, and resolving all chore references into their actual spec.s
