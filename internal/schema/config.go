@@ -33,6 +33,7 @@ type TediumConfig struct {
 		Pause  string `json:"pause" yaml:"pause"`
 	} `json:"images" yaml:"images"`
 
+	// TODO: remove all local cloning
 	// RepoStoragePath defines the path on disk where repos should be cloned when needed locally. If blank a temporary folder will be created.
 	RepoStoragePath               string `json:"repoStoragePath" yaml:"repoStoragePath"`
 	RepoStoragePathWasAutoCreated bool

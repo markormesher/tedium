@@ -51,6 +51,7 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo, platf
 				CloneUrl:   *url,
 				AuthConfig: conf.GetAuthConfigForClone(*url),
 			}
+			// TODO: read this from the API
 			err := git.CloneAndUpdateRepo(configRepo, conf)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to instantiate repo: %w", err)
@@ -96,6 +97,7 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo, platf
 			CloneUrl:   url,
 			AuthConfig: conf.GetAuthConfigForClone(url),
 		}
+		// TODO: read this from the API
 		err := git.CloneAndUpdateRepo(choreRepo, conf)
 		if err != nil {
 			return nil, err
