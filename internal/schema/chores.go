@@ -11,6 +11,8 @@ type ChoreSpec struct {
 
 	SkipCloneStep    bool `json:"skipCloneStep" yaml:"skipCloneStep"`
 	SkipFinaliseStep bool `json:"skipFinaliseStep" yaml:"skipFinaliseStep"`
+
+	UserProvidedEnvironment map[string]string `json:"donotuse_userProvidedEnvironment"`
 }
 
 type ChoreStep struct {
