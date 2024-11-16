@@ -105,6 +105,7 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo, platf
 		if err != nil {
 			return nil, err
 		}
+		choreSpec.UserProvidedEnvironment = mergedConfig.Chores[choreIdx].Environment
 		resolvedConfig.Chores[choreIdx] = choreSpec
 	}
 

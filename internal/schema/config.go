@@ -62,7 +62,7 @@ type RepoChoreConfig struct {
 	Environment map[string]string `json:"environment" yaml:"environment"`
 }
 
-// ResolvedRepoConfig is the result of taking a target repo, following all "extends" links, and resolving all chore references into their actual spec.s
+// ResolvedRepoConfig is the result of taking a target repo, following all "extends" links, and resolving all chore references into their actual spec.
 type ResolvedRepoConfig struct {
 	Chores []*ChoreSpec
 }
