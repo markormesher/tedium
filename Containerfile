@@ -1,4 +1,4 @@
-FROM docker.io/golang:1.23.3@sha256:d56c3e08fe5b27729ee3834854ae8f7015af48fd651cd25d1e3bcf3c19830174 as builder
+FROM docker.io/golang:1.23.3@sha256:73f06be4578c9987ce560087e2e2ea6485fb605e3910542cadd8fa09fc5f3e31 as builder
 WORKDIR /app
 
 RUN apt update && apt install -y --no-install-recommends libbtrfs-dev libgpgme-dev
