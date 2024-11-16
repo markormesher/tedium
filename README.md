@@ -243,11 +243,20 @@ extends:
   - "https://github.com/example/tedium-config-go-projects.git"
 
 # Chores to execute against this repo.
-# Each chore is defined as a Git repo URL and a directory within that repo.
+# Each chore is defined as a Git repo URL and a directory within that repo, plus extra optional configuration as below.
 # Optional.
 chores:
   - cloneUrl: "https://github.com/example/my-tedium-chores.git",
     directory: "render-circle-ci"
+
+    # The branch to read this chore from, if not the default.
+    # Optional.
+    branch: "my-experimental-change"
+
+    # Additional environment variables to pass to every step of the chore. Must not start with "TEDIUM_".
+    # Optional.
+    environment:
+      FOO: "bar"
 ```
 
 ## 🧹 Chores
