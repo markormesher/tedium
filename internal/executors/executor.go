@@ -2,6 +2,7 @@ package executors
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/markormesher/tedium/internal/executors/kubernetes"
 	"github.com/markormesher/tedium/internal/executors/podman"
@@ -72,6 +73,14 @@ func envForStep(baseEnv map[string]string, step *schema.ChoreStep) map[string]st
 	}
 
 	env["TEDIUM_COMMAND"] = step.Command
+
+	for k, v := range step.Environment {
+		if strings.HasPrefix(k, "TEDIUM_") {
+			l.Warn("Not passing environment variable to chore step", "key", k)
+		} else {
+			env[k] = v
+		}
+	}
 
 	return env
 }
