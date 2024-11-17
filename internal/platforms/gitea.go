@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-resty/resty/v2"
 	"github.com/markormesher/tedium/internal/schema"
 	"github.com/markormesher/tedium/internal/utils"
@@ -87,8 +88,12 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	var output []schema.Repo
 	for _, repo := range repoData.Data {
 		output = append(output, schema.Repo{
-			AuthConfig:    p.auth,
-			CloneUrl:      repo.CloneUrl,
+			CloneUrl: repo.CloneUrl,
+			Auth: &http.BasicAuth{
+				// TODO: don't forget to set this properly when app auth is supported
+				Username: "x-access-token",
+				Password: p.auth.Token,
+			},
 			OwnerName:     repo.Owner.Username,
 			Name:          repo.Name,
 			DefaultBranch: repo.DefaultBranch,

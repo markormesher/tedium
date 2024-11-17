@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/go-git/go-git/v5/plumbing/transport"
 )
 
 // Repo represents a real Git repo, which may be either a remote repo from which chores or config are read, or a target repo cloned to disk.
@@ -13,11 +15,9 @@ type Repo struct {
 	OwnerName string
 	Name      string
 
-	// TODO: remove?
-	AuthConfig *AuthConfig
-
 	// present for target repos only
 	CloneUrl      string
+	Auth          transport.AuthMethod
 	DefaultBranch string
 	Archived      bool
 }

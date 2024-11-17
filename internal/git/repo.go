@@ -10,8 +10,6 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/schema"
 	"github.com/markormesher/tedium/internal/utils"
@@ -32,7 +30,7 @@ func CloneRepo(repo *schema.Repo, conf *schema.TediumConfig) error {
 
 	realRepo, err := git.PlainClone(repoClonePath, false, &git.CloneOptions{
 		URL:  repo.CloneUrl,
-		Auth: repoAuth(repo),
+		Auth: repo.Auth,
 	})
 	if err != nil {
 		return fmt.Errorf("Error cloning repo: %w", err)
@@ -143,39 +141,15 @@ func CommitAndPushIfChanged(job *schema.Job, profile *schema.PlatformProfile) (b
 
 	reportRepoState(realRepo, "commit: after")
 
-	auth := repoAuth(job.Repo)
 	err = realRepo.Push(&git.PushOptions{
 		Force: false,
-		Auth:  auth,
+		Auth:  job.Repo.Auth,
 	})
 	if err != nil {
 		return false, fmt.Errorf("Error pushing changes: %w", err)
 	}
 
 	return true, nil
-}
-
-func repoAuth(repo *schema.Repo) transport.AuthMethod {
-	authConfig := repo.AuthConfig
-	if authConfig == nil {
-		return nil
-	}
-
-	if authConfig.Type == schema.AuthConfigTypeUserToken {
-		return &http.BasicAuth{
-			Username: "x-access-token",
-			Password: authConfig.Token,
-		}
-	}
-
-	if authConfig.Type == schema.AuthConfigTypeApp {
-		return &http.BasicAuth{
-			Username: "x-access-token",
-			Password: authConfig.AppInstallationToken,
-		}
-	}
-
-	return nil
 }
 
 func openRepo(r *schema.Repo) (*git.Repository, *git.Worktree, error) {
@@ -205,7 +179,7 @@ func fetchAll(repo *schema.Repo) error {
 
 	err = origin.Fetch(&git.FetchOptions{
 		RefSpecs: []config.RefSpec{"+refs/heads/*:refs/remotes/origin/*", "+refs/*:refs/*"},
-		Auth:     repoAuth(repo),
+		Auth:     repo.Auth,
 		Prune:    true,
 	})
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
