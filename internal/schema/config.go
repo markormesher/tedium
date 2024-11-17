@@ -94,6 +94,21 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 		conf.Images.Pause = "ghcr.io/markormesher/tedium:latest"
 	}
 
+	// sanity checks
+
+	if conf.Executor.Podman != nil && conf.Executor.Kubernetes != nil {
+		return nil, fmt.Errorf("invalid Tedium config: more than one executor configured")
+	}
+
+	var domainsSeen map[string]bool
+	for platformIdx := range conf.Platforms {
+		domain := conf.Platforms[platformIdx].Domain
+		if domainsSeen[domain] {
+			return nil, fmt.Errorf("invalid Tedium config: duplicate platform domain %s", domain)
+		}
+		domainsSeen[domain] = true
+	}
+
 	return &conf, nil
 }
 
