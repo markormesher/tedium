@@ -46,7 +46,6 @@ func (p *GitHubPlatform) Deinit() error {
 }
 
 func (p *GitHubPlatform) AcceptsDomain(domain string) bool {
-	// TODO: does this need to be smarter?
 	return domain == p.domain
 }
 

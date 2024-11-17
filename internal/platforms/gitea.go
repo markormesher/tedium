@@ -48,7 +48,6 @@ func (p *GiteaPlatform) Deinit() error {
 }
 
 func (p *GiteaPlatform) AcceptsDomain(domain string) bool {
-	// TODO: does this need to be smarter?
 	return domain == p.domain
 }
 
