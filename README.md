@@ -49,7 +49,7 @@ Platforms are where repos are hosted. Tedium uses them to discover repos to oper
 
 GitHub and Gitea are supported, and each run of Tedium can target multiple platforms at the same time (see [Configuration](#-configuration) below).
 
-**Important note:** Tedium will never talk to a platform you haven't told it to, even just to read a config file. That means you might need to configure a platform even if you don't want to operate on the repos stored there. To achieve this, you can set `repoFilters` for that platform (see below) to an empty array.
+**Important note:** Tedium will never talk to a platform you haven't told it to, even just to read a config file. If you want to be able to read config files from a platform without operating on the repos there (e.g. to read config from public GitHub but only execute chores against repos in your private Gitea instance), configure the platform with `skipDiscovery: true`.
 
 ## ✨ Features
 

@@ -84,55 +84,57 @@ func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 			os.Exit(1)
 		}
 
-		l.Info("Discovering repos")
-		allRepos, err := platform.DiscoverRepos()
-		if err != nil {
-			l.Error("Error discovering repos", "error", err)
-			os.Exit(1)
-		}
-
-		l.Info("Finished discovering repos", "count", len(allRepos))
-
-		for targetRepoIdx := range allRepos {
-			targetRepo := &allRepos[targetRepoIdx]
-
-			if targetRepo.Archived {
-				l.Info("Repo is archived - skipping", "repo", targetRepo.FullName())
-				continue
-			}
-
-			if !platformConfig.AcceptsRepo(targetRepo.FullName()) {
-				l.Info("Repo does not match any filter - skipping", "repo", targetRepo.FullName())
-				continue
-			}
-
-			hasConfig, err := platform.RepoHasTediumConfig(targetRepo)
+		if !platformConfig.SkipDiscovery {
+			l.Info("Discovering repos")
+			allRepos, err := platform.DiscoverRepos()
 			if err != nil {
-				l.Error("Error checking whether repo has a Tedium config", "repo", targetRepo.FullName(), "error", err)
-				os.Exit(1)
-			}
-			if !hasConfig {
-				l.Info("Repo has no Tedium config - skipping", "repo", targetRepo.FullName())
-				continue
-				// TODO: auto-enrollment
-			}
-
-			repoConfig, err := resolveRepoConfig(conf, targetRepo)
-			if err != nil {
-				l.Error("Error resolving repo config", "repo", targetRepo.FullName(), "error", err)
+				l.Error("Error discovering repos", "error", err)
 				os.Exit(1)
 			}
 
-			l.Info("Resolved chores for repo", "repo", targetRepo.FullName(), "chores", len(repoConfig.Chores))
+			l.Info("Finished discovering repos", "count", len(allRepos))
 
-			for choreIdx := range repoConfig.Chores {
-				jobQueue.Push(schema.Job{
-					Config:         conf,
-					Repo:           targetRepo,
-					RepoConfig:     repoConfig,
-					Chore:          repoConfig.Chores[choreIdx],
-					PlatformConfig: platformConfig,
-				})
+			for targetRepoIdx := range allRepos {
+				targetRepo := &allRepos[targetRepoIdx]
+
+				if targetRepo.Archived {
+					l.Info("Repo is archived - skipping", "repo", targetRepo.FullName())
+					continue
+				}
+
+				if !platformConfig.AcceptsRepo(targetRepo.FullName()) {
+					l.Info("Repo does not match any filter - skipping", "repo", targetRepo.FullName())
+					continue
+				}
+
+				hasConfig, err := platform.RepoHasTediumConfig(targetRepo)
+				if err != nil {
+					l.Error("Error checking whether repo has a Tedium config", "repo", targetRepo.FullName(), "error", err)
+					os.Exit(1)
+				}
+				if !hasConfig {
+					l.Info("Repo has no Tedium config - skipping", "repo", targetRepo.FullName())
+					continue
+					// TODO: auto-enrollment
+				}
+
+				repoConfig, err := resolveRepoConfig(conf, targetRepo)
+				if err != nil {
+					l.Error("Error resolving repo config", "repo", targetRepo.FullName(), "error", err)
+					os.Exit(1)
+				}
+
+				l.Info("Resolved chores for repo", "repo", targetRepo.FullName(), "chores", len(repoConfig.Chores))
+
+				for choreIdx := range repoConfig.Chores {
+					jobQueue.Push(schema.Job{
+						Config:         conf,
+						Repo:           targetRepo,
+						RepoConfig:     repoConfig,
+						Chore:          repoConfig.Chores[choreIdx],
+						PlatformConfig: platformConfig,
+					})
+				}
 			}
 		}
 

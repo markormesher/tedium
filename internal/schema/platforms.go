@@ -16,6 +16,9 @@ type PlatformConfig struct {
 	Domain string      `json:"domain" yaml:"domain"`
 	Auth   *AuthConfig `json:"auth" yaml:"auth"`
 
+	// SkipDiscovery specifies that this platform should not be used to discover target repos (i.e. it is only used for reading config).
+	SkipDiscovery bool `json:"skipDiscovery" yaml:"skipDiscovery"`
+
 	// RepoFiltersRaw specifies a list of Go regexes; if specified, only repos that match at least one filter will be processed.
 	RepoFiltersRaw []string `json:"repoFilters" yaml:"repoFilters"`
 	RepoFilters    []*regexp.Regexp
