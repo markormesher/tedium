@@ -19,44 +19,18 @@ import (
 
 var l = logging.Logger
 
-func CloneAndUpdateRepo(repo *schema.Repo, conf *schema.TediumConfig) error {
-	err := CloneRepo(repo, conf)
-	if err != nil {
-		return err
-	}
-
-	err = UpdateRepo(repo)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+// repos are only ever cloned inside an execution container, so this path doesn't change per-repo
+var repoClonePath = "/tedium/repo"
 
 func CloneRepo(repo *schema.Repo, conf *schema.TediumConfig) error {
 	l.Info("Cloning repo", "url", repo.CloneUrl)
 
-	// don't use the auto-generated path if one has already been set
-	if repo.PathOnDisk == "" {
-		repo.PathOnDisk = repoStoragePath(conf, repo)
-	}
-
-	isPresent, err := isPresentOnDisk(repo)
-	if err != nil {
-		return fmt.Errorf("Error checking whether repo is already present on disk: %w", err)
-	}
-
-	if isPresent {
-		l.Debug("Repo is already present - doing nothing", "source", repo.CloneUrl, "destination", repo.PathOnDisk)
-		return nil
-	}
-
-	err = os.MkdirAll(repo.PathOnDisk, os.ModePerm)
+	err := os.MkdirAll(repoClonePath, os.ModePerm)
 	if err != nil {
 		return fmt.Errorf("Error creating repo storage: %v", err)
 	}
 
-	realRepo, err := git.PlainClone(repo.PathOnDisk, false, &git.CloneOptions{
+	realRepo, err := git.PlainClone(repoClonePath, false, &git.CloneOptions{
 		URL:  repo.CloneUrl,
 		Auth: repoAuth(repo),
 	})
@@ -70,48 +44,6 @@ func CloneRepo(repo *schema.Repo, conf *schema.TediumConfig) error {
 	}
 
 	reportRepoState(realRepo, "clone: after")
-
-	return nil
-}
-
-func UpdateRepo(repo *schema.Repo) error {
-	l.Info("Updating repo", "url", repo.CloneUrl)
-
-	isPresent, err := isPresentOnDisk(repo)
-	if err != nil {
-		return fmt.Errorf("Error checking whether repo is already present on disk: %w", err)
-	}
-
-	if !isPresent {
-		return fmt.Errorf("Cannot update repo that is not present on disk")
-	}
-
-	realRepo, worktree, err := openRepo(repo)
-	if err != nil {
-		return err
-	}
-
-	reportRepoState(realRepo, "update: before pull")
-
-	err = fetchAll(repo)
-	if err != nil {
-		return fmt.Errorf("Error running fetch: %w", err)
-	}
-
-	reportRepoState(realRepo, "update: after fetch")
-
-	err = worktree.Pull(&git.PullOptions{
-		Auth: repoAuth(repo),
-	})
-	if err != nil {
-		if errors.Is(err, git.NoErrAlreadyUpToDate) {
-			l.Debug("Repo has no changes")
-		} else {
-			return fmt.Errorf("Error pulling repo updates: %w", err)
-		}
-	}
-
-	reportRepoState(realRepo, "update: after pull")
 
 	return nil
 }
@@ -247,7 +179,7 @@ func repoAuth(repo *schema.Repo) transport.AuthMethod {
 }
 
 func openRepo(r *schema.Repo) (*git.Repository, *git.Worktree, error) {
-	repo, err := git.PlainOpen(r.PathOnDisk)
+	repo, err := git.PlainOpen(repoClonePath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error opening repo: %w", err)
 	}
@@ -281,34 +213,6 @@ func fetchAll(repo *schema.Repo) error {
 	}
 
 	return nil
-}
-
-func isPresentOnDisk(repo *schema.Repo) (bool, error) {
-	if repo.PathOnDisk == "" {
-		return false, fmt.Errorf("Repo does not have a disk path set")
-	}
-
-	// check whether the directory this repo is cloned to exists
-	_, repoDirErr := os.Stat(repo.PathOnDisk)
-	if repoDirErr != nil {
-		if os.IsNotExist(repoDirErr) {
-			return false, nil
-		} else {
-			return false, fmt.Errorf("Error checking whether repo exists on disk: %w", repoDirErr)
-		}
-	}
-
-	// check whether the directory this repo is cloned to contains a .git folder
-	_, gitDirErr := os.Stat(repo.PathOnDisk + "/.git")
-	if gitDirErr != nil {
-		if os.IsNotExist(gitDirErr) {
-			return false, nil
-		} else {
-			return false, fmt.Errorf("Error checking whether repo exists on disk: %w", gitDirErr)
-		}
-	}
-
-	return true, nil
 }
 
 func reportRepoState(realRepo *git.Repository, note string) {

@@ -20,7 +20,6 @@ type Repo struct {
 	CloneUrl      string
 	DefaultBranch string
 	Archived      bool
-	PathOnDisk    string
 }
 
 func (r *Repo) FullName() string {

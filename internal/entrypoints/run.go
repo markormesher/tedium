@@ -63,15 +63,6 @@ func Run(conf *schema.TediumConfig) {
 		l.Error("Error de-initialising executor", "error", err)
 		os.Exit(1)
 	}
-
-	if conf.RepoStoragePathWasAutoCreated {
-		l.Info("Cleaning up temporary storage")
-		err := os.RemoveAll(conf.RepoStoragePath)
-		if err != nil {
-			l.Error("Error cleaning up storage", "error", err)
-			os.Exit(1)
-		}
-	}
 }
 
 func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {

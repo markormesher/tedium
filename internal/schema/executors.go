@@ -72,10 +72,6 @@ func (job *Job) ToEnvironment() (map[string]string, error) {
 	return env, nil
 }
 
-func (job *Job) ModifyToRunInsideExecutor() {
-	job.Repo.PathOnDisk = "/tedium/repo"
-}
-
 func JobFromEnvironment() (*Job, error) {
 	jobStr := os.Getenv("TEDIUM_JOB")
 

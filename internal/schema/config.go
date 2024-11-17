@@ -33,11 +33,6 @@ type TediumConfig struct {
 		Pause  string `json:"pause" yaml:"pause"`
 	} `json:"images" yaml:"images"`
 
-	// TODO: remove all local cloning
-	// RepoStoragePath defines the path on disk where repos should be cloned when needed locally. If blank a temporary folder will be created.
-	RepoStoragePath               string `json:"repoStoragePath" yaml:"repoStoragePath"`
-	RepoStoragePathWasAutoCreated bool
-
 	// AutoEnrollment defines the Tedium config to apply to repos that don't already have one.
 	AutoEnrollment struct {
 		Enabled bool       `json:"enabled" yaml:"enabled"`
@@ -94,14 +89,6 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 	}
 
 	// apply defaults
-
-	if conf.RepoStoragePath == "" {
-		conf.RepoStoragePathWasAutoCreated = true
-		conf.RepoStoragePath, err = os.MkdirTemp("", "tedium")
-		if err != nil {
-			return nil, fmt.Errorf("Failed to create a temporary directory for repo storage: %v", err)
-		}
-	}
 
 	if conf.Images.Pause == "" {
 		conf.Images.Pause = "ghcr.io/markormesher/tedium-pause:latest"
