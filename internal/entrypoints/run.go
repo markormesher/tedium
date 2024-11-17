@@ -71,7 +71,7 @@ func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 	for id := range conf.Platforms {
 		platformConfig := &conf.Platforms[id]
 
-		l.Info("Initialising platform", "endpoint", platformConfig.Endpoint)
+		l.Info("Initialising platform", "domain", platformConfig.Domain)
 		platform, err := platforms.FromConfig(conf, platformConfig)
 		if err != nil {
 			l.Error("Error initialising platform", "error", err)

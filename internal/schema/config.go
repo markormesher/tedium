@@ -5,7 +5,6 @@ package schema
 import (
 	"bytes"
 	"fmt"
-	"net/url"
 	"os"
 	"regexp"
 
@@ -23,9 +22,6 @@ type TediumConfig struct {
 
 	// Platforms defines the set of repository hosting platforms that repos will be discovered from.
 	Platforms []PlatformConfig `json:"platforms" yaml:"platforms"`
-
-	// Auth defines additional authentication details.
-	ExtraAuth []AuthConfig `json:"extraAuth" yaml:"extraAuth"`
 
 	// Images defines the container images used for Tedium-owned stages of execution
 	Images struct {
@@ -101,49 +97,6 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 	return &conf, nil
 }
 
-// TODO: we should only be cloning target repos, so this should always come from the platform
-func (conf *TediumConfig) GetAuthConfigForClone(cloneUrl string) *AuthConfig {
-	cloneUrlParsed, err := url.Parse(cloneUrl)
-	if err != nil {
-		l.Warn("Failed to parse URL for clone - no auth will be used", "url", cloneUrl, "error", err)
-		return nil
-	}
-
-	cloneDomain := cloneUrlParsed.Host
-
-	// preference 1: extra auth with a matching domain pattern
-
-	for i := range conf.ExtraAuth {
-		a := &conf.ExtraAuth[i]
-		if a.DomainPattern != nil && a.DomainPattern.MatchString(cloneDomain) {
-			return a
-		}
-	}
-
-	// preference 2: platform auth with matching endpoint domain or domain pattern
-
-	for i := range conf.Platforms {
-		platform := &conf.Platforms[i]
-		if platform.Auth == nil {
-			continue
-		}
-
-		endpointUrlParsed, err := url.Parse(platform.Endpoint)
-		if err != nil {
-			l.Warn("Failed to parse URL for platform - it will not be used for clone auth", "endpoint", platform.Endpoint, "error", err)
-			continue
-		}
-
-		if endpointUrlParsed.Host == cloneDomain || (platform.Auth.DomainPattern != nil && platform.Auth.DomainPattern.MatchString(cloneDomain)) {
-			return platform.Auth
-		}
-	}
-
-	// give up
-
-	return nil
-}
-
 func (conf TediumConfig) CompileRepoFilters() error {
 	for i := range conf.Platforms {
 		p := conf.Platforms[i]
@@ -160,18 +113,6 @@ func (conf TediumConfig) CompileRepoFilters() error {
 			}
 
 			p.RepoFilters[fi] = r
-		}
-	}
-
-	for i := range conf.ExtraAuth {
-		a := conf.ExtraAuth[i]
-		if a.DomainPatternRaw != "" {
-			r, err := regexp.Compile(a.DomainPatternRaw)
-			if err != nil {
-				return fmt.Errorf("Error compiling domain filter regex: %w", err)
-			}
-
-			a.DomainPattern = r
 		}
 	}
 
