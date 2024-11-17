@@ -2,7 +2,7 @@
 
 # Tedium
 
-Tedium is a tool to automate the execution of boring or repetitive tasks, called "chores", across all of your Git repos. All chores run in containers, providing complete control over the tooling available. If running a chore against a repo results in changes, Tedium will push those changes and open or update a PR for you.
+Tedium is a tool to automate the execution of boring or repetitive tasks, called "chores", across all of your Git repos. All chores run in containers, providing complete control over the tooling available. If running a chore against a repo results in changes, Tedium will push those changes on a branch and open or update a PR for you.
 
 ## 💻 Usage
 
@@ -39,17 +39,17 @@ Running chores is the entire point of Tedium, so see [Chores](#-chores) below fo
 
 ### Executors
 
-Executors are the container orchestrators that Tedium uses to run your chores - it doesn't actually do any of the execution itself.
+Executors are the container orchestrators that Tedium uses to clone your repos, actually run your chores, and push any changes.
 
 The primary executor is Kubernetes, as Tedium is designed to run on a regular cadence with something like a [Kubernetes CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs), but Podman is also supported for local execution.
 
 ### Platforms
 
-Platforms are where repos are hosted. Tedium uses them to discover repos to operate on, pull and push them, and manage PRs.
+Platforms are where repos are hosted. Tedium uses them to discover repos to operate on, pull and push them, manage PRs, and read config files.
 
-GitHub and Gitea are supported.
+GitHub and Gitea are supported, and each run of Tedium can target multiple platforms at the same time (see [Configuration](#-configuration) below).
 
-Each run of Tedium can target multiple platforms at the same time (see [Configuration](#-configuration) below).
+**Important note:** Tedium will never talk to a platform you haven't told it to, even just to read a config file. That means you might need to configure a platform even if you don't want to operate on the repos stored there. To achieve this, you can set `repoFilters` for that platform (see below) to an empty array.
 
 ## ✨ Features
 
@@ -112,8 +112,9 @@ platforms:
     # Required.
     type: "gitea"
 
+    # Platform domain. Don't include any path segments. For GitHub instances, do not include the "api." subdomain.
     # Required.
-    endpoint: "https://gitea.example.com/api/v1"
+    domain: "gitea.example.com"
 
     # List of regexes to filter repos against during discovery.
     # Repos matching any filter will be included.
@@ -124,31 +125,10 @@ platforms:
 
     # Auth for this platform.
     # Values follow the same format as auth config below.
-    # Optional - see "Auth Configuration" below.
+    # Required, unless this platform will only be used to read public config files.
     auth:
       type: "user_token"
       token: "abc123"
-
-# Per-domain platform authentication.
-# Optional - see "Auth Configuration" below.
-extraAuth:
-
-  # Token auth example - see "Auth Configuration" below.
-  # Domain pattern is a regex as-per the Go standard library.
-  - domainPattern: ".*\\.gitea\\.com"
-    type: "user_token"
-    token: "abc123"
-
-    # App auth example - see "Auth Configuration" below.
-  - domainPattern: ".*\\.github\\.com"
-    type: "app"
-    clientId: "abc123",
-    privateKeyFile: "/run/secrets/github.pem",
-    installationId: "123456"
-
-# Location on disk to store all repos that are cloned (target repos, chores, extended configs, etc).
-# Optional, defaults to a temporary path.
-repoStoragePath: "/tmp/tedium"
 
 # Container images used for built-in chore steps.
 # Optional.
@@ -174,8 +154,8 @@ autoEnrollment:
   # Required if auto-enrollment is enabled, optional otherwise.
   config:
     extends:
-      - "https://github.com/example/tedium-config-all-repos.git"
-      - "https://github.com/example/tedium-config-go-projects.git"
+      - "https://github.com/example/tedium-config-all-repos"
+      - "https://github.com/example/tedium-config-go-projects"
     chores: []
 ```
 
@@ -201,30 +181,6 @@ Tedium can act as a user or an application when interacting with Git platforms, 
     - After installing the app the installation ID can be found can be found at the end of the URL on the app settings page.
   - On Gitea: TODO
 - Provide the `clientId` and `privateKey` or `privateKeyFile` for your app, and the `installationId` for its installation in your profile/organisation.
-
-#### Note: Auth Precedence
-
-- When interacting with a platform API (e.g. to open a PR) or when cloning a target repository, the first of the following auth configs that is found will be used:
-  - The `platforms[].auth` config for that platform.
-  - The first `extraAuth[]` block with a matching domain pattern.
-- When cloning repositories other than target repositories (e.g. chores or shared Tedium configs), the first of the following auth configs that is found will be used:
-  - The first `extraAuth[]` block with a matching domain.
-  - The first `platforms[].auth` config found where the platform `endpoint` domain matches exactly **or** the domain pattern matches.
-
-#### Note: GitHub Domains
-
-The GitHub API is served from a different domain to its repos: `api.github.com` vs `github.com`. To keep your config compact when using GitHub, specify a domain pattern as well as an endpoint, as follows:
-
-```yaml
-platforms:
-  - id: "github"
-    type: "github"
-    endpoint: "https://api.github.com"
-    auth:
-      domainPattern: ".*\\.github\\.com"
-      # token or app details
-```
-
 </details>
 
 ### Repo Configuration
@@ -239,14 +195,14 @@ The full schema of repo configuration is defined in [schema/config.go](./interna
 # URLs of repos containing more repo config to apply to this repo.
 # Optional.
 extends:
-  - "https://github.com/example/tedium-config-all-repos.git"
-  - "https://github.com/example/tedium-config-go-projects.git"
+  - "https://github.com/example/tedium-config-all-repos"
+  - "https://github.com/example/tedium-config-go-projects"
 
 # Chores to execute against this repo.
 # Each chore is defined as a Git repo URL and a directory within that repo, plus extra optional configuration as below.
 # Optional.
 chores:
-  - cloneUrl: "https://github.com/example/my-tedium-chores.git",
+  - Url: "https://github.com/example/my-tedium-chores",
     directory: "render-circle-ci"
 
     # The branch to read this chore from, if not the default.
