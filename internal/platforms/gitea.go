@@ -88,14 +88,16 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	var output []schema.Repo
 	for _, repo := range repoData.Data {
 		output = append(output, schema.Repo{
+			Domain:    p.domain,
+			OwnerName: repo.Owner.Username,
+			Name:      repo.Name,
+
 			CloneUrl: repo.CloneUrl,
 			Auth: &http.BasicAuth{
 				// TODO: don't forget to set this properly when app auth is supported
 				Username: "x-access-token",
 				Password: p.auth.Token,
 			},
-			OwnerName:     repo.Owner.Username,
-			Name:          repo.Name,
 			DefaultBranch: repo.DefaultBranch,
 			Archived:      repo.Archived,
 		})

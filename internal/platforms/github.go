@@ -86,13 +86,15 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 		var output []schema.Repo
 		for _, repo := range repoData {
 			output = append(output, schema.Repo{
+				Domain:    p.domain,
+				OwnerName: repo.Owner.Username,
+				Name:      repo.Name,
+
 				CloneUrl: repo.CloneUrl,
 				Auth: &http.BasicAuth{
 					Username: "x-access-token",
 					Password: p.auth.AppInstallationToken,
 				},
-				OwnerName:     repo.Owner.Username,
-				Name:          repo.Name,
 				DefaultBranch: repo.DefaultBranch,
 				Archived:      repo.Archived,
 			})
@@ -132,13 +134,15 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 		var output []schema.Repo
 		for _, repo := range repoData.Repos {
 			output = append(output, schema.Repo{
+				Domain:    p.domain,
+				OwnerName: repo.Owner.Username,
+				Name:      repo.Name,
+
 				CloneUrl: repo.CloneUrl,
 				Auth: &http.BasicAuth{
 					Username: "x-access-token",
 					Password: p.auth.Token,
 				},
-				OwnerName:     repo.Owner.Username,
-				Name:          repo.Name,
 				DefaultBranch: repo.DefaultBranch,
 				Archived:      repo.Archived,
 			})
