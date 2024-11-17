@@ -104,13 +104,9 @@ executor:
 # Required.
 platforms:
 
-    # ID can be any string and must be unique between platforms.
-    # Required.
-  - id: "my-gitea"
-
     # Platform type ("gitea" or "github")
     # Required.
-    type: "gitea"
+  - type: "gitea"
 
     # Platform domain. Don't include any path segments. For GitHub instances, do not include the "api." subdomain.
     # Required.
@@ -118,10 +114,14 @@ platforms:
 
     # List of regexes to filter repos against during discovery.
     # Repos matching any filter will be included.
-    # The string tested is "org-name/repo-name". Regex format is as-per the Go standard library.
+    # The string tesed is "org-name/repo-name". Regex format is as-per the Go standard library.
     # Optional, defaults to all repos being included.
     repoFilters:
       - "myorg/example\\-.*"
+
+    # Skip discovery of repos from this platform, only use it to read config files.
+    # Optional, defaults to false.
+    skipDiscovery: false
 
     # Auth for this platform.
     # Values follow the same format as auth config below.

@@ -11,7 +11,6 @@ import (
 
 // PlatformConfig defines a Git platform from which repos can be discovered, such as Gitea or GitHub.
 type PlatformConfig struct {
-	Id     string      `json:"id" yaml:"id"`
 	Type   string      `json:"type" yaml:"type"`
 	Domain string      `json:"domain" yaml:"domain"`
 	Auth   *AuthConfig `json:"auth" yaml:"auth"`
