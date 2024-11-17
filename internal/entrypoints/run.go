@@ -138,7 +138,7 @@ func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 			}
 		}
 
-		l.Info("De-initialising platform", "platform", platformConfig.Domain)
+		l.Info("De-initialising platform", "domain", platformConfig.Domain)
 		err = platform.Deinit()
 		if err != nil {
 			l.Error("Error de-initialising platform", "error", err)

@@ -114,7 +114,7 @@ platforms:
 
     # List of regexes to filter repos against during discovery.
     # Repos matching any filter will be included.
-    # The string tesed is "org-name/repo-name". Regex format is as-per the Go standard library.
+    # The string tested is "org-name/repo-name". Regex format is as-per the Go standard library.
     # Optional, defaults to all repos being included.
     repoFilters:
       - "myorg/example\\-.*"
