@@ -2,6 +2,7 @@ package executors
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/markormesher/tedium/internal/executors/kubernetes"
 	"github.com/markormesher/tedium/internal/executors/podman"
@@ -58,20 +59,36 @@ func PrepareJob(job *schema.Job) error {
 			Label:       fmt.Sprintf("step-%d", i+1),
 			Image:       step.Image,
 			Command:     step.Command,
-			Environment: envForStep(baseEnv, &step),
+			Environment: envForStep(baseEnv, job.Chore, &step),
 		}
 	}
 
 	return nil
 }
 
-func envForStep(baseEnv map[string]string, step *schema.ChoreStep) map[string]string {
+func envForStep(baseEnv map[string]string, chore *schema.ChoreSpec, step *schema.ChoreStep) map[string]string {
 	env := make(map[string]string)
 	for k, v := range baseEnv {
 		env[k] = v
 	}
 
 	env["TEDIUM_COMMAND"] = step.Command
+
+	for k, v := range step.Environment {
+		if strings.HasPrefix(k, "TEDIUM_") {
+			l.Warn("Not passing environment variable to chore step", "key", k)
+		} else {
+			env[k] = v
+		}
+	}
+
+	for k, v := range chore.UserProvidedEnvironment {
+		if strings.HasPrefix(k, "TEDIUM_") {
+			l.Warn("Not passing environment variable to chore step", "key", k)
+		} else {
+			env[k] = v
+		}
+	}
 
 	return env
 }
