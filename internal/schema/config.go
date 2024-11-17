@@ -53,7 +53,7 @@ type RepoConfig struct {
 
 // RepoChoreConfig defines one chore to apply to a repo.
 type RepoChoreConfig struct {
-	CloneUrl  string `json:"cloneUrl" yaml:"cloneUrl"`
+	RepoUrl   string `json:"repoUrl" yaml:"repoUrl"`
 	Directory string `json:"directory" yaml:"directory"`
 
 	// Branch specifies the bracnh to read the chore definition from. If blank the default branch will be used.

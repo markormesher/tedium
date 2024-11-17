@@ -115,20 +115,21 @@ func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 				continue
 			}
 
-			repoConfig, err := resolveRepoConfig(conf, targetRepo, platform)
+			hasConfig, err := platform.RepoHasTediumConfig(targetRepo)
+			if err != nil {
+				l.Error("Error checking whether repo has a Tedium config", "repo", targetRepo.FullName(), "error", err)
+				os.Exit(1)
+			}
+			if !hasConfig {
+				l.Info("Repo has no Tedium config - skipping", "repo", targetRepo.FullName())
+				continue
+				// TODO: auto-enrollment
+			}
+
+			repoConfig, err := resolveRepoConfig(conf, targetRepo)
 			if err != nil {
 				l.Error("Error resolving repo config", "repo", targetRepo.FullName(), "error", err)
 				os.Exit(1)
-			}
-			if repoConfig == nil {
-				if conf.AutoEnrollment.Enabled {
-					// TODO: auto enrollment
-					// l.Info("Repo has no Tedium config - configuring auto-enrollment")
-					continue
-				} else {
-					l.Info("Repo has no Tedium config - skipping", "repo", targetRepo.FullName())
-					continue
-				}
 			}
 
 			l.Info("Resolved chores for repo", "repo", targetRepo.FullName(), "chores", len(repoConfig.Chores))
@@ -144,7 +145,7 @@ func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 			}
 		}
 
-		l.Info("De-initialising platform", "platform", platformConfig.Endpoint)
+		l.Info("De-initialising platform", "platform", platformConfig.Domain)
 		err = platform.Deinit()
 		if err != nil {
 			l.Error("Error de-initialising platform", "error", err)

@@ -145,7 +145,7 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 }
 
 func (p *GitHubPlatform) RepoHasTediumConfig(repo *schema.Repo) (bool, error) {
-	file, err := p.ReadRepoFile(repo, utils.AddYamlJsonExtensions(".tedium"))
+	file, err := p.ReadRepoFile(repo, "", utils.AddYamlJsonExtensions(".tedium"))
 
 	if err != nil {
 		return false, fmt.Errorf("Failed to read Tedium file via GitHub API: %w", err)
@@ -154,10 +154,12 @@ func (p *GitHubPlatform) RepoHasTediumConfig(repo *schema.Repo) (bool, error) {
 	return file != nil, nil
 }
 
-func (p *GitHubPlatform) ReadRepoFile(repo *schema.Repo, pathCandidates []string) ([]byte, error) {
+func (p *GitHubPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCandidates []string) ([]byte, error) {
 	var repoFile struct {
 		Content string `json:"content"`
 	}
+
+	// TODO: add brach to network calls
 
 	for _, path := range pathCandidates {
 		_, req, err := p.authedUserOrInstallationRequest()

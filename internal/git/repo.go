@@ -223,67 +223,6 @@ func CommitAndPushIfChanged(job *schema.Job, profile *schema.PlatformProfile) (b
 	return true, nil
 }
 
-func ReadFile(repo *schema.Repo, branch string, pathCandidates []string) ([]byte, error) {
-	isPresent, err := isPresentOnDisk(repo)
-	if err != nil {
-		return nil, fmt.Errorf("Error checking before reading file from repo: %w", err)
-	}
-
-	if !isPresent {
-		return nil, fmt.Errorf("Cannot read a file from a repo that is not present on disk")
-	}
-
-	// check out a branch if necessary, but go back to the original branch afterwards
-	var originalHead *plumbing.Reference
-	var realRepo *git.Repository
-	var worktree *git.Worktree
-	if branch != "" {
-		var err error
-		realRepo, worktree, err = openRepo(repo)
-		if err != nil {
-			return nil, fmt.Errorf("error opening repo to check out branch: %w", err)
-		}
-
-		originalHead, err = realRepo.Head()
-		if err != nil {
-			return nil, fmt.Errorf("error checking original head before checking out branch: %w", err)
-		}
-
-		err = worktree.Checkout(&git.CheckoutOptions{
-			Branch: plumbing.NewBranchReferenceName(branch),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("error checking out branch: %w", err)
-		}
-
-		defer func() error {
-			return worktree.Checkout(&git.CheckoutOptions{Branch: originalHead.Name()})
-		}()
-	}
-
-	for _, path := range pathCandidates {
-		fullPath := fmt.Sprintf("%s/%s", repo.PathOnDisk, path)
-
-		_, pathErr := os.Stat(fullPath)
-		if pathErr != nil {
-			if os.IsNotExist(pathErr) {
-				continue
-			}
-
-			return nil, fmt.Errorf("Error checking whether repo file exists: %w", err)
-		}
-
-		file, err := os.ReadFile(fullPath)
-		if err != nil {
-			return nil, fmt.Errorf("Error reading file from repo: %w", err)
-		}
-
-		return file, nil
-	}
-
-	return nil, fmt.Errorf("Could not read from any candidate path: %v", pathCandidates)
-}
-
 func repoAuth(repo *schema.Repo) transport.AuthMethod {
 	authConfig := repo.AuthConfig
 	if authConfig == nil {

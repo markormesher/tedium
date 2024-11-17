@@ -100,7 +100,7 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 }
 
 func (p *GiteaPlatform) RepoHasTediumConfig(repo *schema.Repo) (bool, error) {
-	file, err := p.ReadRepoFile(repo, utils.AddYamlJsonExtensions(".tedium"))
+	file, err := p.ReadRepoFile(repo, "", utils.AddYamlJsonExtensions(".tedium"))
 
 	if err != nil {
 		return false, fmt.Errorf("Failed to read Tedium file via Gitea API: %w", err)
@@ -109,10 +109,12 @@ func (p *GiteaPlatform) RepoHasTediumConfig(repo *schema.Repo) (bool, error) {
 	return file != nil, nil
 }
 
-func (p *GiteaPlatform) ReadRepoFile(repo *schema.Repo, pathCandidates []string) ([]byte, error) {
+func (p *GiteaPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCandidates []string) ([]byte, error) {
 	var repoFile struct {
 		Content string `json:"content"`
 	}
+
+	// TODO: add brach to network calls
 
 	for _, path := range pathCandidates {
 		_, req := p.authedRequest()
