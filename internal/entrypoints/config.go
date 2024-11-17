@@ -85,7 +85,7 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo) (*sch
 		Chores: make([]*schema.ChoreSpec, len(mergedConfig.Chores)),
 	}
 	for choreIdx := range mergedConfig.Chores {
-		choreRepoUrl := mergedConfig.Chores[choreIdx].RepoUrl
+		choreRepoUrl := mergedConfig.Chores[choreIdx].Url
 		choreDirectory := mergedConfig.Chores[choreIdx].Directory
 
 		choreRepo, err := schema.RepoFromUrl(choreRepoUrl)
