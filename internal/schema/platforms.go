@@ -13,6 +13,7 @@ import (
 type PlatformConfig struct {
 	Id       string      `json:"id" yaml:"id"`
 	Type     string      `json:"type" yaml:"type"`
+	Domain   string      `json:"domain" yaml:"domain"`
 	Endpoint string      `json:"endpoint" yaml:"endpoint"`
 	Auth     *AuthConfig `json:"auth" yaml:"auth"`
 

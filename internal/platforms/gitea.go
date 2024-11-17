@@ -10,27 +10,24 @@ import (
 )
 
 type GiteaPlatform struct {
-	Endpoint string
-	Auth     *schema.AuthConfig
+	// supplied via config
+	domain string
+	auth   *schema.AuthConfig
 
-	// private state
-	profile *schema.PlatformProfile
+	// generated locally
+	apiBaseUrl string
+	profile    *schema.PlatformProfile
 }
 
 func giteaPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (*GiteaPlatform, error) {
-	auth := conf.GetAuthConfigForPlatform(platformConfig)
-
-	if auth == nil {
-		return nil, fmt.Errorf("Cannot construct Gitea platform without auth config", "endpoint", platformConfig.Endpoint)
-	}
-
-	if auth.Type != schema.AuthConfigTypeUserToken {
-		return nil, fmt.Errorf("Cannot construct Gitea platform with auth type other than user token", "endpoint", platformConfig.Endpoint)
+	if platformConfig.Auth != nil && platformConfig.Auth.Type != schema.AuthConfigTypeUserToken {
+		return nil, fmt.Errorf("Cannot construct Gitea platform with auth type other than user token", "domain", platformConfig.Domain)
 	}
 
 	return &GiteaPlatform{
-		Endpoint: platformConfig.Endpoint,
-		Auth:     auth,
+		domain:     platformConfig.Domain,
+		auth:       platformConfig.Auth,
+		apiBaseUrl: fmt.Sprintf("https://%s/api/v1", platformConfig.Domain),
 	}, nil
 }
 
@@ -47,6 +44,11 @@ func (p *GiteaPlatform) Init(conf *schema.TediumConfig) error {
 
 func (p *GiteaPlatform) Deinit() error {
 	return nil
+}
+
+func (p *GiteaPlatform) AcceptsDomain(domain string) bool {
+	// TODO: does this need to be smarter?
+	return domain == p.domain
 }
 
 func (p *GiteaPlatform) Profile() *schema.PlatformProfile {
@@ -72,7 +74,7 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 		"limit": "100",
 	})
 
-	response, err := req.Get(fmt.Sprintf("%s/repos/search", p.Endpoint))
+	response, err := req.Get(fmt.Sprintf("%s/repos/search", p.apiBaseUrl))
 
 	if err != nil {
 		return nil, fmt.Errorf("Error making Gitea API request: %v", err)
@@ -85,7 +87,7 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	var output []schema.Repo
 	for _, repo := range repoData.Data {
 		output = append(output, schema.Repo{
-			AuthConfig:    p.Auth,
+			AuthConfig:    p.auth,
 			CloneUrl:      repo.CloneUrl,
 			OwnerName:     repo.Owner.Username,
 			Name:          repo.Name,
@@ -115,7 +117,7 @@ func (p *GiteaPlatform) ReadRepoFile(repo *schema.Repo, pathCandidates []string)
 	for _, path := range pathCandidates {
 		_, req := p.authedRequest()
 		req.SetResult(&repoFile)
-		response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.Endpoint, repo.OwnerName, repo.Name, path))
+		response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.apiBaseUrl, repo.OwnerName, repo.Name, path))
 		if err != nil {
 			return nil, fmt.Errorf("Failed to read file via Gitea API: %w", err)
 		}
@@ -157,7 +159,7 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 	_, req := p.authedRequest()
 	req.SetResult(&existingPrs)
-	response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/pulls", p.Endpoint, job.Repo.OwnerName, job.Repo.Name))
+	response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/pulls", p.apiBaseUrl, job.Repo.OwnerName, job.Repo.Name))
 	if err != nil {
 		return fmt.Errorf("Error fetching existing PRs: %w", err)
 	}
@@ -187,10 +189,10 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 	if existingPrNum == 0 {
 		l.Debug("Opening PR")
-		response, err = req.Post(fmt.Sprintf("%s/repos/%s/%s/pulls", p.Endpoint, job.Repo.OwnerName, job.Repo.Name))
+		response, err = req.Post(fmt.Sprintf("%s/repos/%s/%s/pulls", p.apiBaseUrl, job.Repo.OwnerName, job.Repo.Name))
 	} else {
 		l.Debug("Updating PR")
-		response, err = req.Patch(fmt.Sprintf("%s/repos/%s/%s/pulls/%d", p.Endpoint, job.Repo.OwnerName, job.Repo.Name, existingPrNum))
+		response, err = req.Patch(fmt.Sprintf("%s/repos/%s/%s/pulls/%d", p.apiBaseUrl, job.Repo.OwnerName, job.Repo.Name, existingPrNum))
 	}
 
 	if err != nil {
@@ -213,7 +215,7 @@ func (p *GiteaPlatform) loadProfile(conf *schema.TediumConfig) error {
 
 	_, req := p.authedRequest()
 	req.SetResult(&user)
-	response, err := req.Get(fmt.Sprintf("%s/user", p.Endpoint))
+	response, err := req.Get(fmt.Sprintf("%s/user", p.apiBaseUrl))
 
 	if err != nil {
 		return fmt.Errorf("Failed to load user profile: %v", err)
@@ -234,15 +236,15 @@ func (p *GiteaPlatform) authedRequest() (*resty.Client, *resty.Request) {
 	client := resty.New()
 	request := client.NewRequest()
 
-	if p.Auth == nil {
-		panic("No auth config present for Gitea platform . This condition should have been guarded against.")
+	if p.auth == nil {
+		return client, request
 	}
 
-	if p.Auth.Type == schema.AuthConfigTypeUserToken {
-		request.SetHeader("Authorization", fmt.Sprintf("token %s", p.Auth.Token))
+	if p.auth.Type == schema.AuthConfigTypeUserToken {
+		request.SetHeader("Authorization", fmt.Sprintf("token %s", p.auth.Token))
 	}
 
-	if p.Auth.Type == schema.AuthConfigTypeApp {
+	if p.auth.Type == schema.AuthConfigTypeApp {
 		// TODO: support app auth for Gitea
 		panic("Not supported yet")
 	}

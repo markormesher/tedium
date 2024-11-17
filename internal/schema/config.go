@@ -108,30 +108,7 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 	return &conf, nil
 }
 
-func (conf *TediumConfig) GetAuthConfigForPlatform(platformConfig *PlatformConfig) *AuthConfig {
-	// preference 1: auth for the platform
-
-	if platformConfig.Auth != nil {
-		return platformConfig.Auth
-	}
-
-	// preference 2: extra auth with a matching domain
-
-	endpointUrlParsed, err := url.Parse(platformConfig.Endpoint)
-	if err != nil {
-		l.Warn("Failed to parse URL for platform - will not use any extra auth entry", "endpoint", platformConfig.Endpoint, "error", err)
-		return nil
-	}
-	for i := range conf.ExtraAuth {
-		a := &conf.ExtraAuth[i]
-		if a.DomainPattern != nil && a.DomainPattern.MatchString(endpointUrlParsed.Host) {
-			return a
-		}
-	}
-
-	return nil
-}
-
+// TODO: we should only be cloning target repos, so this should always come from the platform
 func (conf *TediumConfig) GetAuthConfigForClone(cloneUrl string) *AuthConfig {
 	cloneUrlParsed, err := url.Parse(cloneUrl)
 	if err != nil {

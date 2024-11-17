@@ -4,6 +4,9 @@ import "fmt"
 
 // Repo represents a real Git repo, which may or may not be present on disk.
 type Repo struct {
+	// TODO: populate
+	Domain string
+
 	// present for all repos
 	CloneUrl string
 
