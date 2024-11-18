@@ -120,10 +120,13 @@ func (p *GiteaPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCandi
 		Content string `json:"content"`
 	}
 
-	// TODO: add brach to network calls
-
 	for _, path := range pathCandidates {
 		_, req := p.authedRequest()
+
+		if branch != "" {
+			req.SetQueryParam("ref", branch)
+		}
+
 		req.SetResult(&repoFile)
 		response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.apiBaseUrl, repo.OwnerName, repo.Name, path))
 		if err != nil {

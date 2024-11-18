@@ -169,12 +169,14 @@ func (p *GitHubPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCand
 		Content string `json:"content"`
 	}
 
-	// TODO: add brach to network calls
-
 	for _, path := range pathCandidates {
 		_, req, err := p.authedUserOrInstallationRequest()
 		if err != nil {
 			return nil, fmt.Errorf("Failed to read file via GitHub API: %w", err)
+		}
+
+		if branch != "" {
+			req.SetQueryParam("ref", branch)
 		}
 
 		req.SetResult(&repoFile)
