@@ -2,6 +2,6 @@ extends:
   - "https://github.com/markormesher/tedium-config"
 
 chores:
-  - cloneUrl: "https://github.com/markormesher/tedium-chores"
+  - url: "https://github.com/markormesher/tedium-chores"
     branch: "mormesher/taskfile-chore"
     directory: "generate-taskfile"
