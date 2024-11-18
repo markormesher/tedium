@@ -49,9 +49,12 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo) (*sch
 		}
 
 		var repoConfigRaw []byte
-		repoConfigRaw, err = platform.ReadRepoFile(targetRepo, "", utils.AddYamlJsonExtensions(fileName))
+		repoConfigRaw, err = platform.ReadRepoFile(configRepo, "", utils.AddYamlJsonExtensions(fileName))
 		if err != nil {
 			return nil, fmt.Errorf("failed to read config file out of repo: %w", err)
+		}
+		if repoConfigRaw == nil {
+			return nil, fmt.Errorf("failed to read config file out of repo: no file exists")
 		}
 
 		var repoConfig *schema.RepoConfig
@@ -86,6 +89,7 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo) (*sch
 	}
 	for choreIdx := range mergedConfig.Chores {
 		choreRepoUrl := mergedConfig.Chores[choreIdx].Url
+		choreBranch := mergedConfig.Chores[choreIdx].Branch
 		choreDirectory := mergedConfig.Chores[choreIdx].Directory
 
 		choreRepo, err := schema.RepoFromUrl(choreRepoUrl)
@@ -99,9 +103,12 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo) (*sch
 		}
 
 		var choreSpecRaw []byte
-		choreSpecRaw, err = platform.ReadRepoFile(choreRepo, "", utils.AddYamlJsonExtensions(fmt.Sprintf("%s/chore", choreDirectory)))
+		choreSpecRaw, err = platform.ReadRepoFile(choreRepo, choreBranch, utils.AddYamlJsonExtensions(fmt.Sprintf("%s/chore", choreDirectory)))
 		if err != nil {
 			return nil, fmt.Errorf("failed to read chore file out of repo: %w", err)
+		}
+		if choreSpecRaw == nil {
+			return nil, fmt.Errorf("failed to read chore file out of repo: no file exists")
 		}
 
 		var choreSpec schema.ChoreSpec

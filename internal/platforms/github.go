@@ -190,12 +190,12 @@ func (p *GitHubPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCand
 			continue
 		}
 
-		fileStr, err := base64.StdEncoding.DecodeString(repoFile.Content)
+		fileBytes, err := base64.StdEncoding.DecodeString(repoFile.Content)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to decode base64 string: %w", err)
 		}
 
-		return fileStr, nil
+		return fileBytes, nil
 	}
 
 	// no result for any path candidate

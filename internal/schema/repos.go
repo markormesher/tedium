@@ -42,6 +42,6 @@ func RepoFromUrl(repoUrl string) (*Repo, error) {
 	return &Repo{
 		Domain:    domain,
 		OwnerName: pathSegments[0],
-		Name:      pathSegments[1],
+		Name:      strings.TrimSuffix(pathSegments[1], ".git"),
 	}, nil
 }
