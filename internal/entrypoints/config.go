@@ -4,21 +4,13 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/markormesher/tedium/internal/git"
 	"github.com/markormesher/tedium/internal/platforms"
 	"github.com/markormesher/tedium/internal/schema"
 	"github.com/markormesher/tedium/internal/utils"
 	"gopkg.in/yaml.v3"
 )
 
-func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo, platform platforms.Platform) (*schema.ResolvedRepoConfig, error) {
-	hasConfig, err := platform.RepoHasTediumConfig(targetRepo)
-	if err != nil {
-		return nil, err
-	}
-	if !hasConfig {
-		return nil, nil
-	}
+func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo) (*schema.ResolvedRepoConfig, error) {
 
 	// we start from a nil config, merge the root config, then merge every "extends" config on top
 	// TODO: this is backwards - we need to merge the extends first, then merge/apply overrides
@@ -29,51 +21,54 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo, platf
 	var urlsToVisit utils.Queue[string]
 	urlsToVisit.Push(targetRepo.CloneUrl)
 
+	visitingTargetRepo := true
+
 	for {
-		url, ok := urlsToVisit.Pop()
+		configUrl, ok := urlsToVisit.Pop()
 		if !ok {
 			break
 		}
 
-		urlsVisited[*url] = true
+		urlsVisited[*configUrl] = true
 
-		var configContents []byte
+		configRepo, err := schema.RepoFromUrl(*configUrl)
+		if err != nil {
+			return nil, fmt.Errorf("error constructing config repo before reading its config: %w", err)
+		}
 
-		if *url == targetRepo.CloneUrl {
-			// it's the target repo, so we can read the config from there without instantiation
-			configContents, err = platform.ReadRepoFile(targetRepo, utils.AddYamlJsonExtensions(".tedium"))
-			if err != nil {
-				return nil, fmt.Errorf("Failed to read config file out of repo: %w", err)
-			}
+		platform := platforms.FromDomain(configRepo.Domain)
+		if platform == nil {
+			return nil, fmt.Errorf("failed to determine a platform to read repo config (domain: %s)", configRepo.Domain)
+		}
+
+		var fileName string
+		if visitingTargetRepo {
+			fileName = ".tedium"
 		} else {
-			// it's not the target repo, so we need to instantiate the repo and read the config from disk
-			configRepo := &schema.Repo{
-				CloneUrl:   *url,
-				AuthConfig: conf.GetAuthConfigForClone(*url),
-			}
-			err := git.CloneAndUpdateRepo(configRepo, conf)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to instantiate repo: %w", err)
-			}
+			fileName = "index"
+		}
 
-			configContents, err = git.ReadFile(configRepo, "", utils.AddYamlJsonExtensions("index"))
-			if err != nil {
-				return nil, fmt.Errorf("Failed to read config file out of repo: %w", err)
-			}
+		var repoConfigRaw []byte
+		repoConfigRaw, err = platform.ReadRepoFile(configRepo, "", utils.AddYamlJsonExtensions(fileName))
+		if err != nil {
+			return nil, fmt.Errorf("failed to read config file out of repo: %w", err)
+		}
+		if repoConfigRaw == nil {
+			return nil, fmt.Errorf("failed to read config file out of repo: no file exists")
 		}
 
 		var repoConfig *schema.RepoConfig
-		decoder := yaml.NewDecoder(bytes.NewReader(configContents))
+		decoder := yaml.NewDecoder(bytes.NewReader(repoConfigRaw))
 		decoder.KnownFields(true)
-		err := decoder.Decode(&repoConfig)
+		err = decoder.Decode(&repoConfig)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to unmarshal repo config file: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal repo config file: %w", err)
 		}
 
 		for _, extendsUrl := range repoConfig.Extends {
 			visited := urlsVisited[extendsUrl]
 			if visited {
-				l.Warn("Loop detected in config extension - saw a URL for the second time", "url", extendsUrl)
+				l.Warn("loop detected in config extension - saw a URL for the second time", "url", extendsUrl)
 			} else {
 				urlsToVisit.Push(extendsUrl)
 			}
@@ -81,8 +76,10 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo, platf
 
 		mergedConfig, err = mergeRepoConfigs(mergedConfig, repoConfig)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to merge using upstream config from %s: %w", url, err)
+			return nil, fmt.Errorf("failed to merge using upstream config from %s: %w", *configUrl, err)
 		}
+
+		visitingTargetRepo = false
 	}
 
 	// for every chore in the merged config, resolve it into the actual chore spec
@@ -91,22 +88,38 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo, platf
 		Chores: make([]*schema.ChoreSpec, len(mergedConfig.Chores)),
 	}
 	for choreIdx := range mergedConfig.Chores {
-		url := mergedConfig.Chores[choreIdx].CloneUrl
-		choreRepo := &schema.Repo{
-			CloneUrl:   url,
-			AuthConfig: conf.GetAuthConfigForClone(url),
-		}
-		err := git.CloneAndUpdateRepo(choreRepo, conf)
+		choreRepoUrl := mergedConfig.Chores[choreIdx].Url
+		choreBranch := mergedConfig.Chores[choreIdx].Branch
+		choreDirectory := mergedConfig.Chores[choreIdx].Directory
+
+		choreRepo, err := schema.RepoFromUrl(choreRepoUrl)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error constructing chore repo before reading its config: %w", err)
 		}
 
-		choreSpec, err := readChoreSpec(choreRepo, &mergedConfig.Chores[choreIdx])
-		if err != nil {
-			return nil, err
+		platform := platforms.FromDomain(choreRepo.Domain)
+		if platform == nil {
+			return nil, fmt.Errorf("failed to determine a platform to read chore config (domain: %s)", choreRepo.Domain)
 		}
-		choreSpec.UserProvidedEnvironment = mergedConfig.Chores[choreIdx].Environment
-		resolvedConfig.Chores[choreIdx] = choreSpec
+
+		var choreSpecRaw []byte
+		choreSpecRaw, err = platform.ReadRepoFile(choreRepo, choreBranch, utils.AddYamlJsonExtensions(fmt.Sprintf("%s/chore", choreDirectory)))
+		if err != nil {
+			return nil, fmt.Errorf("failed to read chore file out of repo: %w", err)
+		}
+		if choreSpecRaw == nil {
+			return nil, fmt.Errorf("failed to read chore file out of repo: no file exists")
+		}
+
+		var choreSpec schema.ChoreSpec
+		decoder := yaml.NewDecoder(bytes.NewReader(choreSpecRaw))
+		decoder.KnownFields(true)
+		err = decoder.Decode(&choreSpec)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal chore config file: %w", err)
+		}
+
+		resolvedConfig.Chores[choreIdx] = &choreSpec
 	}
 
 	return resolvedConfig, nil
@@ -135,21 +148,4 @@ func mergeRepoConfigs(a, b *schema.RepoConfig) (*schema.RepoConfig, error) {
 	return &schema.RepoConfig{
 		Chores: chores,
 	}, nil
-}
-
-func readChoreSpec(choreRepo *schema.Repo, choreConfig *schema.RepoChoreConfig) (*schema.ChoreSpec, error) {
-	choreSpecFile, err := git.ReadFile(choreRepo, choreConfig.Branch, utils.AddYamlJsonExtensions((fmt.Sprintf("%s/chore", choreConfig.Directory))))
-	if err != nil {
-		return nil, fmt.Errorf("Error reading chore spec file: %v", err)
-	}
-
-	var choreSpec schema.ChoreSpec
-	decoder := yaml.NewDecoder(bytes.NewReader(choreSpecFile))
-	decoder.KnownFields(true)
-	err = decoder.Decode(&choreSpec)
-	if err != nil {
-		return nil, err
-	}
-
-	return &choreSpec, nil
 }

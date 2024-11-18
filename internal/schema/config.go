@@ -5,7 +5,6 @@ package schema
 import (
 	"bytes"
 	"fmt"
-	"net/url"
 	"os"
 	"regexp"
 
@@ -24,18 +23,11 @@ type TediumConfig struct {
 	// Platforms defines the set of repository hosting platforms that repos will be discovered from.
 	Platforms []PlatformConfig `json:"platforms" yaml:"platforms"`
 
-	// Auth defines additional authentication details.
-	ExtraAuth []AuthConfig `json:"extraAuth" yaml:"extraAuth"`
-
 	// Images defines the container images used for Tedium-owned stages of execution
 	Images struct {
 		Tedium string `json:"tedium" yaml:"tedium"`
 		Pause  string `json:"pause" yaml:"pause"`
 	} `json:"images" yaml:"images"`
-
-	// RepoStoragePath defines the path on disk where repos should be cloned when needed locally. If blank a temporary folder will be created.
-	RepoStoragePath               string `json:"repoStoragePath" yaml:"repoStoragePath"`
-	RepoStoragePathWasAutoCreated bool
 
 	// AutoEnrollment defines the Tedium config to apply to repos that don't already have one.
 	AutoEnrollment struct {
@@ -52,7 +44,7 @@ type RepoConfig struct {
 
 // RepoChoreConfig defines one chore to apply to a repo.
 type RepoChoreConfig struct {
-	CloneUrl  string `json:"cloneUrl" yaml:"cloneUrl"`
+	Url       string `json:"url" yaml:"url"`
 	Directory string `json:"directory" yaml:"directory"`
 
 	// Branch specifies the bracnh to read the chore definition from. If blank the default branch will be used.
@@ -94,14 +86,6 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 
 	// apply defaults
 
-	if conf.RepoStoragePath == "" {
-		conf.RepoStoragePathWasAutoCreated = true
-		conf.RepoStoragePath, err = os.MkdirTemp("", "tedium")
-		if err != nil {
-			return nil, fmt.Errorf("Failed to create a temporary directory for repo storage: %v", err)
-		}
-	}
-
 	if conf.Images.Pause == "" {
 		conf.Images.Pause = "ghcr.io/markormesher/tedium-pause:latest"
 	}
@@ -110,73 +94,22 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 		conf.Images.Pause = "ghcr.io/markormesher/tedium:latest"
 	}
 
+	// sanity checks
+
+	if conf.Executor.Podman != nil && conf.Executor.Kubernetes != nil {
+		return nil, fmt.Errorf("invalid Tedium config: more than one executor configured")
+	}
+
+	domainsSeen := make(map[string]bool)
+	for platformIdx := range conf.Platforms {
+		domain := conf.Platforms[platformIdx].Domain
+		if domainsSeen[domain] {
+			return nil, fmt.Errorf("invalid Tedium config: duplicate platform domain %s", domain)
+		}
+		domainsSeen[domain] = true
+	}
+
 	return &conf, nil
-}
-
-func (conf *TediumConfig) GetAuthConfigForPlatform(platformConfig *PlatformConfig) *AuthConfig {
-	// preference 1: auth for the platform
-
-	if platformConfig.Auth != nil {
-		return platformConfig.Auth
-	}
-
-	// preference 2: extra auth with a matching domain
-
-	endpointUrlParsed, err := url.Parse(platformConfig.Endpoint)
-	if err != nil {
-		l.Warn("Failed to parse URL for platform - will not use any extra auth entry", "endpoint", platformConfig.Endpoint, "error", err)
-		return nil
-	}
-	for i := range conf.ExtraAuth {
-		a := &conf.ExtraAuth[i]
-		if a.DomainPattern != nil && a.DomainPattern.MatchString(endpointUrlParsed.Host) {
-			return a
-		}
-	}
-
-	return nil
-}
-
-func (conf *TediumConfig) GetAuthConfigForClone(cloneUrl string) *AuthConfig {
-	cloneUrlParsed, err := url.Parse(cloneUrl)
-	if err != nil {
-		l.Warn("Failed to parse URL for clone - no auth will be used", "url", cloneUrl, "error", err)
-		return nil
-	}
-
-	cloneDomain := cloneUrlParsed.Host
-
-	// preference 1: extra auth with a matching domain pattern
-
-	for i := range conf.ExtraAuth {
-		a := &conf.ExtraAuth[i]
-		if a.DomainPattern != nil && a.DomainPattern.MatchString(cloneDomain) {
-			return a
-		}
-	}
-
-	// preference 2: platform auth with matching endpoint domain or domain pattern
-
-	for i := range conf.Platforms {
-		platform := &conf.Platforms[i]
-		if platform.Auth == nil {
-			continue
-		}
-
-		endpointUrlParsed, err := url.Parse(platform.Endpoint)
-		if err != nil {
-			l.Warn("Failed to parse URL for platform - it will not be used for clone auth", "endpoint", platform.Endpoint, "error", err)
-			continue
-		}
-
-		if endpointUrlParsed.Host == cloneDomain || (platform.Auth.DomainPattern != nil && platform.Auth.DomainPattern.MatchString(cloneDomain)) {
-			return platform.Auth
-		}
-	}
-
-	// give up
-
-	return nil
 }
 
 func (conf TediumConfig) CompileRepoFilters() error {
@@ -195,18 +128,6 @@ func (conf TediumConfig) CompileRepoFilters() error {
 			}
 
 			p.RepoFilters[fi] = r
-		}
-	}
-
-	for i := range conf.ExtraAuth {
-		a := conf.ExtraAuth[i]
-		if a.DomainPatternRaw != "" {
-			r, err := regexp.Compile(a.DomainPatternRaw)
-			if err != nil {
-				return fmt.Errorf("Error compiling domain filter regex: %w", err)
-			}
-
-			a.DomainPattern = r
 		}
 	}
 

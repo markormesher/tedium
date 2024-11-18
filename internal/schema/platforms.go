@@ -11,10 +11,12 @@ import (
 
 // PlatformConfig defines a Git platform from which repos can be discovered, such as Gitea or GitHub.
 type PlatformConfig struct {
-	Id       string      `json:"id" yaml:"id"`
-	Type     string      `json:"type" yaml:"type"`
-	Endpoint string      `json:"endpoint" yaml:"endpoint"`
-	Auth     *AuthConfig `json:"auth" yaml:"auth"`
+	Type   string      `json:"type" yaml:"type"`
+	Domain string      `json:"domain" yaml:"domain"`
+	Auth   *AuthConfig `json:"auth" yaml:"auth"`
+
+	// SkipDiscovery specifies that this platform should not be used to discover target repos (i.e. it is only used for reading config).
+	SkipDiscovery bool `json:"skipDiscovery" yaml:"skipDiscovery"`
 
 	// RepoFiltersRaw specifies a list of Go regexes; if specified, only repos that match at least one filter will be processed.
 	RepoFiltersRaw []string `json:"repoFilters" yaml:"repoFilters"`
@@ -28,10 +30,6 @@ var (
 
 // AuthConfig defines how to authenticate with a platform.
 type AuthConfig struct {
-	// domain pattern to match when searching for auth to clone a repo
-	DomainPatternRaw string `json:"domainPattern" yaml:"domainPattern"`
-	DomainPattern    *regexp.Regexp
-
 	Type string `json:"type" yaml:"type"`
 
 	// type: user_token

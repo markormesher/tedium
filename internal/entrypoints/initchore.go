@@ -14,8 +14,6 @@ func InitChore() {
 		os.Exit(1)
 	}
 
-	job.ModifyToRunInsideExecutor()
-
 	err = git.CloneRepo(job.Repo, job.Config)
 	if err != nil {
 		l.Error("Error cloning repo", "error", err)

@@ -63,15 +63,6 @@ func Run(conf *schema.TediumConfig) {
 		l.Error("Error de-initialising executor", "error", err)
 		os.Exit(1)
 	}
-
-	if conf.RepoStoragePathWasAutoCreated {
-		l.Info("Cleaning up temporary storage")
-		err := os.RemoveAll(conf.RepoStoragePath)
-		if err != nil {
-			l.Error("Error cleaning up storage", "error", err)
-			os.Exit(1)
-		}
-	}
 }
 
 func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
@@ -80,7 +71,7 @@ func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 	for id := range conf.Platforms {
 		platformConfig := &conf.Platforms[id]
 
-		l.Info("Initialising platform", "endpoint", platformConfig.Endpoint)
+		l.Info("Initialising platform", "domain", platformConfig.Domain)
 		platform, err := platforms.FromConfig(conf, platformConfig)
 		if err != nil {
 			l.Error("Error initialising platform", "error", err)
@@ -93,58 +84,61 @@ func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 			os.Exit(1)
 		}
 
-		l.Info("Discovering repos")
-		allRepos, err := platform.DiscoverRepos()
-		if err != nil {
-			l.Error("Error discovering repos", "error", err)
-			os.Exit(1)
-		}
-
-		l.Info("Finished discovering repos", "count", len(allRepos))
-
-		for targetRepoIdx := range allRepos {
-			targetRepo := &allRepos[targetRepoIdx]
-
-			if targetRepo.Archived {
-				l.Info("Repo is archived - skipping", "repo", targetRepo.FullName())
-				continue
-			}
-
-			if !platformConfig.AcceptsRepo(targetRepo.FullName()) {
-				l.Info("Repo does not match any filter - skipping", "repo", targetRepo.FullName())
-				continue
-			}
-
-			repoConfig, err := resolveRepoConfig(conf, targetRepo, platform)
+		if !platformConfig.SkipDiscovery {
+			l.Info("Discovering repos")
+			allRepos, err := platform.DiscoverRepos()
 			if err != nil {
-				l.Error("Error resolving repo config", "repo", targetRepo.FullName(), "error", err)
+				l.Error("Error discovering repos", "error", err)
 				os.Exit(1)
 			}
-			if repoConfig == nil {
-				if conf.AutoEnrollment.Enabled {
-					// TODO: auto enrollment
-					// l.Info("Repo has no Tedium config - configuring auto-enrollment")
-					continue
-				} else {
-					l.Info("Repo has no Tedium config - skipping", "repo", targetRepo.FullName())
+
+			l.Info("Finished discovering repos", "count", len(allRepos))
+
+			for targetRepoIdx := range allRepos {
+				targetRepo := &allRepos[targetRepoIdx]
+
+				if targetRepo.Archived {
+					l.Info("Repo is archived - skipping", "repo", targetRepo.FullName())
 					continue
 				}
-			}
 
-			l.Info("Resolved chores for repo", "repo", targetRepo.FullName(), "chores", len(repoConfig.Chores))
+				if !platformConfig.AcceptsRepo(targetRepo.FullName()) {
+					l.Info("Repo does not match any filter - skipping", "repo", targetRepo.FullName())
+					continue
+				}
 
-			for choreIdx := range repoConfig.Chores {
-				jobQueue.Push(schema.Job{
-					Config:         conf,
-					Repo:           targetRepo,
-					RepoConfig:     repoConfig,
-					Chore:          repoConfig.Chores[choreIdx],
-					PlatformConfig: platformConfig,
-				})
+				hasConfig, err := platform.RepoHasTediumConfig(targetRepo)
+				if err != nil {
+					l.Error("Error checking whether repo has a Tedium config", "repo", targetRepo.FullName(), "error", err)
+					os.Exit(1)
+				}
+				if !hasConfig {
+					l.Info("Repo has no Tedium config - skipping", "repo", targetRepo.FullName())
+					continue
+					// TODO: auto-enrollment
+				}
+
+				repoConfig, err := resolveRepoConfig(conf, targetRepo)
+				if err != nil {
+					l.Error("Error resolving repo config", "repo", targetRepo.FullName(), "error", err)
+					os.Exit(1)
+				}
+
+				l.Info("Resolved chores for repo", "repo", targetRepo.FullName(), "chores", len(repoConfig.Chores))
+
+				for choreIdx := range repoConfig.Chores {
+					jobQueue.Push(schema.Job{
+						Config:         conf,
+						Repo:           targetRepo,
+						RepoConfig:     repoConfig,
+						Chore:          repoConfig.Chores[choreIdx],
+						PlatformConfig: platformConfig,
+					})
+				}
 			}
 		}
 
-		l.Info("De-initialising platform", "platform", platformConfig.Endpoint)
+		l.Info("De-initialising platform", "domain", platformConfig.Domain)
 		err = platform.Deinit()
 		if err != nil {
 			l.Error("Error de-initialising platform", "error", err)
