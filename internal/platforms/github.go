@@ -21,7 +21,6 @@ type GitHubPlatform struct {
 }
 
 func githubPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (*GitHubPlatform, error) {
-
 	return &GitHubPlatform{
 		domain:     platformConfig.Domain,
 		auth:       platformConfig.Auth,
@@ -53,6 +52,11 @@ func (p *GitHubPlatform) Profile() *schema.PlatformProfile {
 }
 
 func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
+	if p.auth == nil {
+		l.Warn("No auth configured for paltform; skipping repo discovery", "domain", p.domain)
+		return make([]schema.Repo, 0), nil
+	}
+
 	switch p.auth.Type {
 	case schema.AuthConfigTypeUserToken:
 		var repoData []struct {
