@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-resty/resty/v2"
 	"github.com/markormesher/tedium/internal/schema"
 	"github.com/markormesher/tedium/internal/utils"
@@ -90,7 +89,7 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 				Name:      repo.Name,
 
 				CloneUrl: repo.CloneUrl,
-				Auth: &http.BasicAuth{
+				Auth: schema.RepoAuth{
 					Username: "x-access-token",
 					Password: p.auth.AppInstallationToken,
 				},
@@ -138,9 +137,9 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 				Name:      repo.Name,
 
 				CloneUrl: repo.CloneUrl,
-				Auth: &http.BasicAuth{
+				Auth: schema.RepoAuth{
 					Username: "x-access-token",
-					Password: p.auth.Token,
+					Password: p.auth.AppInstallationToken,
 				},
 				DefaultBranch: repo.DefaultBranch,
 				Archived:      repo.Archived,

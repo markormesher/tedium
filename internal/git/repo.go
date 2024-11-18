@@ -30,7 +30,7 @@ func CloneRepo(repo *schema.Repo, conf *schema.TediumConfig) error {
 
 	realRepo, err := git.PlainClone(repoClonePath, false, &git.CloneOptions{
 		URL:  repo.CloneUrl,
-		Auth: repo.Auth,
+		Auth: repo.Auth.ToTransportAuth(),
 	})
 	if err != nil {
 		return fmt.Errorf("Error cloning repo: %w", err)
@@ -143,7 +143,7 @@ func CommitAndPushIfChanged(job *schema.Job, profile *schema.PlatformProfile) (b
 
 	err = realRepo.Push(&git.PushOptions{
 		Force: false,
-		Auth:  job.Repo.Auth,
+		Auth:  job.Repo.Auth.ToTransportAuth(),
 	})
 	if err != nil {
 		return false, fmt.Errorf("Error pushing changes: %w", err)
@@ -179,7 +179,7 @@ func fetchAll(repo *schema.Repo) error {
 
 	err = origin.Fetch(&git.FetchOptions{
 		RefSpecs: []config.RefSpec{"+refs/heads/*:refs/remotes/origin/*", "+refs/*:refs/*"},
-		Auth:     repo.Auth,
+		Auth:     repo.Auth.ToTransportAuth(),
 		Prune:    true,
 	})
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {

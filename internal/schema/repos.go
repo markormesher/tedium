@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 // Repo represents a real Git repo, which may be either a remote repo from which chores or config are read, or a target repo cloned to disk.
@@ -17,13 +18,25 @@ type Repo struct {
 
 	// present for target repos only
 	CloneUrl      string
-	Auth          transport.AuthMethod
+	Auth          RepoAuth
 	DefaultBranch string
 	Archived      bool
 }
 
+type RepoAuth struct {
+	Username string
+	Password string
+}
+
 func (r *Repo) FullName() string {
 	return fmt.Sprintf("%s/%s", r.OwnerName, r.Name)
+}
+
+func (ra *RepoAuth) ToTransportAuth() transport.AuthMethod {
+	return &http.BasicAuth{
+		Username: ra.Username,
+		Password: ra.Password,
+	}
 }
 
 func RepoFromUrl(repoUrl string) (*Repo, error) {
