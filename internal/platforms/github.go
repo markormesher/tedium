@@ -91,7 +91,7 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 				CloneUrl: repo.CloneUrl,
 				Auth: schema.RepoAuth{
 					Username: "x-access-token",
-					Password: p.auth.AppInstallationToken,
+					Password: p.auth.Token,
 				},
 				DefaultBranch: repo.DefaultBranch,
 				Archived:      repo.Archived,
