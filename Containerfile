@@ -17,6 +17,9 @@ RUN make build
 FROM debian:bookworm@sha256:10901ccd8d249047f9761845b4594f121edef079cfd8224edebd9ea726f0a7f6
 WORKDIR /app
 
+LABEL image.registry=ghcr.io
+LABEL image.name=markormesher/tedium
+
 RUN apt update \
   && apt install -y --no-install-recommends \
   ca-certificates \
