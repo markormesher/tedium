@@ -68,6 +68,7 @@ func Run(conf *schema.TediumConfig) {
 func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 	var jobQueue utils.Queue[schema.Job]
 
+	// init ALL platforms before trying to use ANY of them
 	for id := range conf.Platforms {
 		platformConfig := &conf.Platforms[id]
 
@@ -83,63 +84,86 @@ func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 			l.Error("Error initialising platform", "error", err)
 			os.Exit(1)
 		}
+	}
 
-		if !platformConfig.SkipDiscovery {
-			l.Info("Discovering repos")
-			allRepos, err := platform.DiscoverRepos()
+	for id := range conf.Platforms {
+		platformConfig := &conf.Platforms[id]
+		platform := platforms.FromDomain(platformConfig.Domain)
+		if platform == nil {
+			// this shouldn't ever happen
+			l.Error("Unable to retrieve existing platform by domain", "domain", platformConfig.Domain)
+			os.Exit(1)
+		}
+
+		if platformConfig.SkipDiscovery {
+			continue
+		}
+
+		l.Info("Discovering repos")
+		allRepos, err := platform.DiscoverRepos()
+		if err != nil {
+			l.Error("Error discovering repos", "error", err)
+			os.Exit(1)
+		}
+
+		l.Info("Finished discovering repos", "count", len(allRepos))
+
+		for targetRepoIdx := range allRepos {
+			targetRepo := &allRepos[targetRepoIdx]
+
+			if targetRepo.Archived {
+				l.Info("Repo is archived - skipping", "repo", targetRepo.FullName())
+				continue
+			}
+
+			if !platformConfig.AcceptsRepo(targetRepo.FullName()) {
+				l.Info("Repo does not match any filter - skipping", "repo", targetRepo.FullName())
+				continue
+			}
+
+			hasConfig, err := platform.RepoHasTediumConfig(targetRepo)
 			if err != nil {
-				l.Error("Error discovering repos", "error", err)
+				l.Error("Error checking whether repo has a Tedium config", "repo", targetRepo.FullName(), "error", err)
+				os.Exit(1)
+			}
+			if !hasConfig {
+				l.Info("Repo has no Tedium config - skipping", "repo", targetRepo.FullName())
+				continue
+				// TODO: auto-enrollment
+			}
+
+			repoConfig, err := resolveRepoConfig(conf, targetRepo)
+			if err != nil {
+				l.Error("Error resolving repo config", "repo", targetRepo.FullName(), "error", err)
 				os.Exit(1)
 			}
 
-			l.Info("Finished discovering repos", "count", len(allRepos))
+			l.Info("Resolved chores for repo", "repo", targetRepo.FullName(), "chores", len(repoConfig.Chores))
 
-			for targetRepoIdx := range allRepos {
-				targetRepo := &allRepos[targetRepoIdx]
-
-				if targetRepo.Archived {
-					l.Info("Repo is archived - skipping", "repo", targetRepo.FullName())
-					continue
-				}
-
-				if !platformConfig.AcceptsRepo(targetRepo.FullName()) {
-					l.Info("Repo does not match any filter - skipping", "repo", targetRepo.FullName())
-					continue
-				}
-
-				hasConfig, err := platform.RepoHasTediumConfig(targetRepo)
-				if err != nil {
-					l.Error("Error checking whether repo has a Tedium config", "repo", targetRepo.FullName(), "error", err)
-					os.Exit(1)
-				}
-				if !hasConfig {
-					l.Info("Repo has no Tedium config - skipping", "repo", targetRepo.FullName())
-					continue
-					// TODO: auto-enrollment
-				}
-
-				repoConfig, err := resolveRepoConfig(conf, targetRepo)
-				if err != nil {
-					l.Error("Error resolving repo config", "repo", targetRepo.FullName(), "error", err)
-					os.Exit(1)
-				}
-
-				l.Info("Resolved chores for repo", "repo", targetRepo.FullName(), "chores", len(repoConfig.Chores))
-
-				for choreIdx := range repoConfig.Chores {
-					jobQueue.Push(schema.Job{
-						Config:         conf,
-						Repo:           targetRepo,
-						RepoConfig:     repoConfig,
-						Chore:          repoConfig.Chores[choreIdx],
-						PlatformConfig: platformConfig,
-					})
-				}
+			for choreIdx := range repoConfig.Chores {
+				jobQueue.Push(schema.Job{
+					Config:         conf,
+					Repo:           targetRepo,
+					RepoConfig:     repoConfig,
+					Chore:          repoConfig.Chores[choreIdx],
+					PlatformConfig: platformConfig,
+				})
 			}
+		}
+	}
+
+	// de-init platforms after ALL of them are finished with
+	for id := range conf.Platforms {
+		platformConfig := &conf.Platforms[id]
+		platform := platforms.FromDomain(platformConfig.Domain)
+		if platform == nil {
+			// this shouldn't ever happen
+			l.Error("Unable to retrieve existing platform by domain", "domain", platformConfig.Domain)
+			os.Exit(1)
 		}
 
 		l.Info("De-initialising platform", "domain", platformConfig.Domain)
-		err = platform.Deinit()
+		err := platform.Deinit()
 		if err != nil {
 			l.Error("Error de-initialising platform", "error", err)
 			os.Exit(1)
