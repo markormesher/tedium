@@ -3,7 +3,7 @@ module github.com/markormesher/tedium
 go 1.23.3
 
 require (
-	github.com/containers/podman/v5 v5.3.0
+	github.com/containers/podman/v5 v5.3.1
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/go-resty/resty/v2 v2.16.1
 	github.com/golang-jwt/jwt/v5 v5.2.1
