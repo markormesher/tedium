@@ -10,17 +10,14 @@ jobs:
     <<: *defaults
     steps:
       - checkout
-      - restore_cache:
-          keys:
-            - go-mod-v1-{{ .Branch }}
-            - go-mod-v1
       - run:
-          name: Download dependencies
-          command: go mod vendor
-      - save_cache:
-          key: go-mod-v1-{{ .Branch }}-{{ epoch }}
-          paths:
-            - vendor
+          name: Download Taskfile runner
+          command: |
+            wget https://github.com/go-task/task/releases/download/v3.40.0/task_linux_amd64.tar.gz
+            wget https://github.com/go-task/task/releases/download/v3.40.0/task_checksums.txt
+            sha256sum --check --ignore-missing task_checksums.txt
+            tar xf task_linux_amd64.tar.gz task
+            rm task_linux_amd64.tar.gz
       - persist_to_workspace:
           root: .
           paths:
@@ -33,21 +30,9 @@ jobs:
           at: .
       - run:
           name: Lint
-          command: make lint
+          command: ./task lint
 
-  build:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: .
-      - run:
-          name: Install dependencies
-          command: sudo apt update && sudo apt install -y --no-install-recommends libbtrfs-dev libgpgme-dev
-      - run:
-          name: Build
-          command: make build
-
-  publish:
+  img:
     <<: *defaults
     steps:
       - attach_workspace:
@@ -56,17 +41,13 @@ jobs:
           docker_layer_caching: true
       - run:
           name: Build container image
-          command: |
-            docker build /tmp/app -f Containerfile -t ghcr.io/markormesher/${CIRCLE_PROJECT_REPONAME}:$(git describe --tags)
-            docker image ls
+          command: ./task img-build
       - run:
-          name: Maybe publish container image
+          name: Maybe push container image
           command: |
-            if ! git describe --exact-match HEAD > /dev/null 2>&1; then echo "Not on tagged commit - nothing to do"; exit 0; fi
-            docker tag ghcr.io/markormesher/${CIRCLE_PROJECT_REPONAME}:$(git describe --tags) ghcr.io/markormesher/${CIRCLE_PROJECT_REPONAME}:latest
+            if ! git describe --exact-match HEAD >/dev/null 2>&1; then echo "Not on tagged commit - nothing to do"; exit 0; fi
             echo "${GHCR_PUBLISH_TOKEN}" | docker login ghcr.io -u markormesher --password-stdin
-            docker push ghcr.io/markormesher/${CIRCLE_PROJECT_REPONAME}:$(git describe --tags)
-            docker push ghcr.io/markormesher/${CIRCLE_PROJECT_REPONAME}:latest
+            ./task img-push
 
 workflows:
   version: 2
@@ -82,16 +63,9 @@ workflows:
           filters:
             tags:
               only: /.*/
-      - build:
-          requires:
-            - setup
-          filters:
-            tags:
-              only: /.*/
-      - publish:
+      - img:
           requires:
             - lint
-            - build
           filters:
             tags:
               only: /.*/
