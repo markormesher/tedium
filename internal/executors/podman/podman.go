@@ -77,7 +77,7 @@ func (p *PodmanExecutor) ExecuteChore(job *schema.Job) error {
 		return err
 	}
 
-	for i, _ := range job.ExecutionSteps {
+	for i := range job.ExecutionSteps {
 		step := job.ExecutionSteps[i]
 
 		s := specgen.NewSpecGenerator(step.Image, false)
@@ -85,7 +85,7 @@ func (p *PodmanExecutor) ExecuteChore(job *schema.Job) error {
 		s.Command = []string{"/bin/sh", "-c", "echo \"${TEDIUM_COMMAND}\" | /bin/sh"}
 		s.Env = step.Environment
 		s.Volumes = []*specgen.NamedVolume{
-			&specgen.NamedVolume{
+			{
 				Name: repoVolume,
 				Dest: "/tedium/repo",
 			},

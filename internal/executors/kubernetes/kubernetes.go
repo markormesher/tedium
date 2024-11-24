@@ -107,7 +107,7 @@ func (executor *KubernetesExecutor) ExecuteChore(job *schema.Job) error {
 			Containers:                    make([]v1.Container, totalSteps),
 			TerminationGracePeriodSeconds: &zero,
 			Volumes: []v1.Volume{
-				v1.Volume{
+				{
 					Name: "repo",
 					VolumeSource: v1.VolumeSource{
 						EmptyDir: &v1.EmptyDirVolumeSource{},
@@ -117,7 +117,7 @@ func (executor *KubernetesExecutor) ExecuteChore(job *schema.Job) error {
 		},
 	}
 
-	for i, _ := range job.ExecutionSteps {
+	for i := range job.ExecutionSteps {
 		step := job.ExecutionSteps[i]
 		pod.Spec.Containers[i] = v1.Container{
 			Name:    step.Label,
@@ -126,7 +126,7 @@ func (executor *KubernetesExecutor) ExecuteChore(job *schema.Job) error {
 			Command: []string{"/bin/sh", "-c"},
 			Args:    []string{"echo \"${TEDIUM_COMMAND}\" | /bin/sh"},
 			VolumeMounts: []v1.VolumeMount{
-				v1.VolumeMount{
+				{
 					Name:      "repo",
 					MountPath: "/tedium/repo",
 				},
@@ -142,7 +142,7 @@ func (executor *KubernetesExecutor) ExecuteChore(job *schema.Job) error {
 
 	// run actual steps by swapping the image on each container within the pod
 
-	for i, _ := range job.ExecutionSteps {
+	for i := range job.ExecutionSteps {
 		step := job.ExecutionSteps[i]
 		patch := schema.JsonPatch{
 			schema.JsonPatchOperation{

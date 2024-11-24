@@ -53,7 +53,7 @@ func PrepareJob(job *schema.Job) error {
 	}
 
 	job.ExecutionSteps = make([]schema.ExecutionStep, len(job.Chore.Steps))
-	for i, _ := range job.Chore.Steps {
+	for i := range job.Chore.Steps {
 		step := job.Chore.Steps[i]
 		job.ExecutionSteps[i] = schema.ExecutionStep{
 			Label:       fmt.Sprintf("step-%d", i+1),
