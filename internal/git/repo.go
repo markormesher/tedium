@@ -12,7 +12,6 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/schema"
-	"github.com/markormesher/tedium/internal/utils"
 )
 
 var l = logging.Logger
@@ -20,7 +19,9 @@ var l = logging.Logger
 // repos are only ever cloned inside an execution container, so this path doesn't change per-repo
 var repoClonePath = "/tedium/repo"
 
-func CloneRepo(repo *schema.Repo, conf *schema.TediumConfig) error {
+func CloneRepo(job *schema.Job, conf *schema.TediumConfig) error {
+	repo := job.Repo
+
 	l.Info("Cloning repo", "url", repo.CloneUrl)
 
 	err := os.MkdirAll(repoClonePath, os.ModePerm)
@@ -28,7 +29,7 @@ func CloneRepo(repo *schema.Repo, conf *schema.TediumConfig) error {
 		return fmt.Errorf("Error creating repo storage: %v", err)
 	}
 
-	realRepo, err := git.PlainClone(repoClonePath, false, &git.CloneOptions{
+	_, err = git.PlainClone(repoClonePath, false, &git.CloneOptions{
 		URL:  repo.CloneUrl,
 		Auth: repo.Auth.ToTransportAuth(),
 	})
@@ -41,24 +42,17 @@ func CloneRepo(repo *schema.Repo, conf *schema.TediumConfig) error {
 		return fmt.Errorf("Error running fetch: %w", err)
 	}
 
-	reportRepoState(realRepo, "clone: after")
-
 	return nil
 }
 
-// CheckoutBranchForJob checks out a named branch on a repo, creating it if necessary.
-func CheckoutBranchForJob(job *schema.Job) error {
-	branchName := utils.ConvertToBranchName(job.Chore.Name)
-	branchRefName := plumbing.NewBranchReferenceName(branchName)
-
-	l.Info("Checking out a branch for chore", "branch", branchName)
-
+// CheckoutWorkBranch checks out the work branch in a repo, creating it if necessary.
+func CheckoutWorkBranch(job *schema.Job) error {
 	realRepo, worktree, err := openRepo(job.Repo)
 	if err != nil {
 		return err
 	}
 
-	// sanity check: the repo should be in a clean state, otherwise something else is misbehaving; if it is not, bail out to avoid making things worse
+	// sanity check: the repo should be in a clean state
 	status, err := worktree.Status()
 	if err != nil {
 		return fmt.Errorf("Error checking repo status: %w", err)
@@ -67,43 +61,27 @@ func CheckoutBranchForJob(job *schema.Job) error {
 		return fmt.Errorf("Refusing to checkout a new branch on an unclean repo")
 	}
 
-	reportRepoState(realRepo, "chore branch: before")
-
-	// iterate branches to check whether we have one already (checking via .Branch(name string) doesn't reliably work)
-	branchExists := false
-	branches, err := realRepo.Branches()
+	branchExists, err := branchExists(realRepo, job.WorkBranchName)
 	if err != nil {
-		return fmt.Errorf("Error listing repo branches: %w", err)
-	}
-	err = branches.ForEach(func(ref *plumbing.Reference) error {
-		if ref.Name() == branchRefName {
-			branchExists = true
-		}
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("Error checking whether chore branch already exists: %w", err)
+		return fmt.Errorf("error checking whether chore branch already exists: %w", err)
 	}
 
-	if !branchExists {
-		l.Info("Branch does not exist - it will be created", "branch", branchName)
-	}
+	l.Info("Checking out work branch for chore", "branch", job.WorkBranchName, "created", !branchExists)
 
+	branchRefName := plumbing.NewBranchReferenceName(job.WorkBranchName)
 	err = worktree.Checkout(&git.CheckoutOptions{
 		Branch: branchRefName,
 		Create: !branchExists,
 	})
 	if err != nil {
-		return fmt.Errorf("Error checking out chore branch: %w", err)
+		return fmt.Errorf("error checking out work branch: %w", err)
 	}
-
-	reportRepoState(realRepo, "chore branch: after checkout")
 
 	return nil
 }
 
-func CommitAndPushIfChanged(job *schema.Job, profile *schema.PlatformProfile) (bool, error) {
-	realRepo, worktree, err := openRepo(job.Repo)
+func CommitIfChanged(job *schema.Job, profile *schema.PlatformProfile) (bool, error) {
+	_, worktree, err := openRepo(job.Repo)
 	if err != nil {
 		return false, err
 	}
@@ -114,13 +92,10 @@ func CommitAndPushIfChanged(job *schema.Job, profile *schema.PlatformProfile) (b
 	}
 
 	if repoStatus.IsClean() {
-		l.Info("Chore did not modify repo")
 		return false, nil
 	}
 
-	l.Info("Committing and pushing changes")
-
-	reportRepoState(realRepo, "commit: before")
+	l.Info("Committing changes")
 
 	_, err = worktree.Add(".")
 	if err != nil {
@@ -139,17 +114,61 @@ func CommitAndPushIfChanged(job *schema.Job, profile *schema.PlatformProfile) (b
 		return false, fmt.Errorf("Error committing changes: %w", err)
 	}
 
-	reportRepoState(realRepo, "commit: after")
+	return true, nil
+}
 
-	err = realRepo.Push(&git.PushOptions{
-		Force: false,
-		Auth:  job.Repo.Auth.ToTransportAuth(),
-	})
+func WorkBranchDiffersFromFinalBranch(job *schema.Job) (bool, error) {
+	realRepo, _, err := openRepo(job.Repo)
 	if err != nil {
-		return false, fmt.Errorf("Error pushing changes: %w", err)
+		return false, err
 	}
 
-	return true, nil
+	finalBranchExists, err := branchExists(realRepo, job.FinalBranchName)
+	if err != nil {
+		return false, fmt.Errorf("error checking whether final branch exists: %w", err)
+	}
+
+	if !finalBranchExists {
+		// final branch doesn't exist yet, so we definitely need to push changes
+		return true, nil
+	}
+
+	// final branch does exist, so check whether it's different to the work branch
+	workBranchCommit, err := getLatestCommit(realRepo, job.WorkBranchName)
+	if err != nil {
+		return false, fmt.Errorf("error getting latest commit on work branch: %w", err)
+	}
+
+	finalBranchCommit, err := getLatestCommit(realRepo, job.FinalBranchName)
+	if err != nil {
+		return false, fmt.Errorf("error getting latest commit on final branch: %w", err)
+	}
+
+	hasChanges := workBranchCommit.TreeHash != finalBranchCommit.TreeHash
+
+	return hasChanges, nil
+}
+
+func PushWorkBranchToFinalBranch(job *schema.Job) error {
+	realRepo, _, err := openRepo(job.Repo)
+	if err != nil {
+		return err
+	}
+
+	l.Info("Pushing changes")
+
+	err = realRepo.Push(&git.PushOptions{
+		RefSpecs: []config.RefSpec{
+			config.RefSpec(plumbing.ReferenceName("refs/heads/"+job.WorkBranchName) + ":" + plumbing.ReferenceName("refs/heads/"+job.FinalBranchName)),
+		},
+		Auth:  job.Repo.Auth.ToTransportAuth(),
+		Force: true,
+	})
+	if err != nil {
+		return fmt.Errorf("error pushing changes: %w", err)
+	}
+
+	return nil
 }
 
 func openRepo(r *schema.Repo) (*git.Repository, *git.Worktree, error) {
@@ -189,12 +208,36 @@ func fetchAll(repo *schema.Repo) error {
 	return nil
 }
 
-func reportRepoState(realRepo *git.Repository, note string) {
-	head, err := realRepo.Head()
+func branchExists(realRepo *git.Repository, branchName string) (bool, error) {
+	branchRefName := plumbing.NewBranchReferenceName(branchName)
+	branchExists := false
+	branches, err := realRepo.Branches()
 	if err != nil {
-		l.Error("Failed to repo repo state", "error", err)
-		return
+		return false, fmt.Errorf("error listing repo branches: %w", err)
+	}
+	err = branches.ForEach(func(ref *plumbing.Reference) error {
+		if ref.Name() == branchRefName {
+			branchExists = true
+		}
+		return nil
+	})
+	if err != nil {
+		return false, fmt.Errorf("error iterating branches: %w", err)
 	}
 
-	l.Debug("Repo state @ "+note, "headName", head.Name(), "headHash", head.Hash().String())
+	return branchExists, nil
+}
+
+func getLatestCommit(realRepo *git.Repository, branchName string) (*object.Commit, error) {
+	branchRef, err := realRepo.Reference(plumbing.ReferenceName("refs/heads/"+branchName), true)
+	if err != nil {
+		return nil, fmt.Errorf("error getting branch reference: %w", err)
+	}
+
+	commit, err := realRepo.CommitObject(branchRef.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("error getting latest commit: %w", err)
+	}
+
+	return commit, nil
 }

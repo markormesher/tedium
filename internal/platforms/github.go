@@ -208,8 +208,6 @@ func (p *GitHubPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCand
 func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 	l.Info("Opening or updating PR", "chore", job.Chore.Name)
 
-	branchName := utils.ConvertToBranchName(job.Chore.Name)
-
 	var existingPrs []struct {
 		Num   int    `json:"number"`
 		State string `json:"state"`
@@ -239,7 +237,7 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 	var existingPrNum int
 	for _, pr := range existingPrs {
-		if pr.Base.Label == fmt.Sprintf("%s:%s", job.Repo.OwnerName, job.Repo.DefaultBranch) && pr.Head.Label == fmt.Sprintf("%s:%s", job.Repo.OwnerName, branchName) && pr.State == "open" {
+		if pr.Base.Label == fmt.Sprintf("%s:%s", job.Repo.OwnerName, job.Repo.DefaultBranch) && pr.Head.Label == fmt.Sprintf("%s:%s", job.Repo.OwnerName, job.FinalBranchName) && pr.State == "open" {
 			existingPrNum = pr.Num
 			break
 		}
@@ -247,7 +245,7 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 	prBody := map[string]interface{}{
 		"base":  job.Repo.DefaultBranch,
-		"head":  fmt.Sprintf("%s:%s", job.Repo.OwnerName, branchName),
+		"head":  fmt.Sprintf("%s:%s", job.Repo.OwnerName, job.FinalBranchName),
 		"title": job.Chore.PrTitle(),
 		"body":  job.Chore.PrBody(),
 	}
@@ -282,6 +280,10 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 // internal methods
 
 func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
+	if p.auth == nil || p.originalPlatformConfig.SkipDiscovery {
+		return nil
+	}
+
 	switch p.auth.Type {
 	case schema.AuthConfigTypeUserToken:
 		var userEmails []struct {
@@ -359,6 +361,12 @@ func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
 // - installation: request using a short-lived token; this is used when operation an app for requests that ARE related to a specific installation
 
 func (p *GitHubPlatform) authedUserOrInstallationRequest() (*resty.Client, *resty.Request, error) {
+	if p.auth == nil {
+		client := resty.New()
+		request := client.NewRequest()
+		return client, request, nil
+	}
+
 	switch p.auth.Type {
 	case schema.AuthConfigTypeUserToken:
 		return p.authedUserRequest()

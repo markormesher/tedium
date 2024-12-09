@@ -45,12 +45,14 @@ type ExecutionStep struct {
 
 // Job represents an item of work to be done: a specific chore on a specific repo. It should be self-contained; i.e. carry all the info needed to perform a job.
 type Job struct {
-	Config         *TediumConfig
-	Repo           *Repo
-	RepoConfig     *ResolvedRepoConfig
-	Chore          *ChoreSpec
-	ExecutionSteps []ExecutionStep
-	PlatformConfig *PlatformConfig
+	Config          *TediumConfig
+	Repo            *Repo
+	RepoConfig      *ResolvedRepoConfig
+	Chore           *ChoreSpec
+	ExecutionSteps  []ExecutionStep
+	PlatformConfig  *PlatformConfig
+	WorkBranchName  string
+	FinalBranchName string
 }
 
 // ToEnvironment() generates a set of environment variables that are passed into chore execution steps.

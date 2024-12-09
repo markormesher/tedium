@@ -15,8 +15,9 @@ type GiteaPlatform struct {
 	auth   *schema.AuthConfig
 
 	// generated locally
-	apiBaseUrl string
-	profile    *schema.PlatformProfile
+	apiBaseUrl             string
+	originalPlatformConfig *schema.PlatformConfig
+	profile                *schema.PlatformProfile
 }
 
 func giteaPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (*GiteaPlatform, error) {
@@ -25,9 +26,10 @@ func giteaPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.P
 	}
 
 	return &GiteaPlatform{
-		domain:     platformConfig.Domain,
-		auth:       platformConfig.Auth,
-		apiBaseUrl: fmt.Sprintf("https://%s/api/v1", platformConfig.Domain),
+		domain:                 platformConfig.Domain,
+		auth:                   platformConfig.Auth,
+		apiBaseUrl:             fmt.Sprintf("https://%s/api/v1", platformConfig.Domain),
+		originalPlatformConfig: platformConfig,
 	}, nil
 }
 
@@ -157,8 +159,6 @@ func (p *GiteaPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCandi
 func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 	l.Info("Opening or updating PR", "chore", job.Chore.Name)
 
-	branchName := utils.ConvertToBranchName(job.Chore.Name)
-
 	var existingPrs []struct {
 		Num   int    `json:"number"`
 		State string `json:"state"`
@@ -185,7 +185,7 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 	var existingPrNum int
 	for _, pr := range existingPrs {
-		if pr.Base.Label == job.Repo.DefaultBranch && pr.Head.Label == branchName && pr.State == "open" {
+		if pr.Base.Label == job.Repo.DefaultBranch && pr.Head.Label == job.FinalBranchName && pr.State == "open" {
 			existingPrNum = pr.Num
 			break
 		}
@@ -193,7 +193,7 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 	prBody := map[string]interface{}{
 		"base":  job.Repo.DefaultBranch,
-		"head":  branchName,
+		"head":  job.FinalBranchName,
 		"title": job.Chore.PrTitle(),
 		"body":  job.Chore.PrBody(),
 	}
@@ -224,6 +224,10 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 // internal methods
 
 func (p *GiteaPlatform) loadProfile(conf *schema.TediumConfig) error {
+	if p.auth == nil || p.originalPlatformConfig.SkipDiscovery {
+		return nil
+	}
+
 	var user struct {
 		Email string `json:"email"`
 	}

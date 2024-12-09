@@ -141,12 +141,15 @@ func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 			l.Info("Resolved chores for repo", "repo", targetRepo.FullName(), "chores", len(repoConfig.Chores))
 
 			for choreIdx := range repoConfig.Chores {
+				chore := repoConfig.Chores[choreIdx]
 				jobQueue.Push(schema.Job{
-					Config:         conf,
-					Repo:           targetRepo,
-					RepoConfig:     repoConfig,
-					Chore:          repoConfig.Chores[choreIdx],
-					PlatformConfig: platformConfig,
+					Config:          conf,
+					Repo:            targetRepo,
+					RepoConfig:      repoConfig,
+					Chore:           chore,
+					PlatformConfig:  platformConfig,
+					WorkBranchName:  utils.UniqueName("work"),
+					FinalBranchName: utils.ConvertToBranchName(chore.Name),
 				})
 			}
 		}
