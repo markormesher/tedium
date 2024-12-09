@@ -32,7 +32,7 @@ func PrepareJob(platform platforms.Platform, job *schema.Job) error {
 
 	jobEnvBundle, err := job.ToEnvironment()
 	if err != nil {
-		return fmt.Errorf("Error generating environment variables for job: %w", err)
+		return fmt.Errorf("error generating job environment variable: %w", err)
 	}
 
 	if !job.Chore.SkipCloneStep {
