@@ -88,9 +88,10 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo) (*sch
 		Chores: make([]*schema.ChoreSpec, len(mergedConfig.Chores)),
 	}
 	for choreIdx := range mergedConfig.Chores {
-		choreRepoUrl := mergedConfig.Chores[choreIdx].Url
-		choreBranch := mergedConfig.Chores[choreIdx].Branch
-		choreDirectory := mergedConfig.Chores[choreIdx].Directory
+		sourceChore := &mergedConfig.Chores[choreIdx]
+		choreRepoUrl := sourceChore.Url
+		choreBranch := sourceChore.Branch
+		choreDirectory := sourceChore.Directory
 
 		choreRepo, err := schema.RepoFromUrl(choreRepoUrl)
 		if err != nil {
@@ -118,6 +119,8 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo) (*sch
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal chore config file: %w", err)
 		}
+
+		choreSpec.SourceConfig = sourceChore
 
 		resolvedConfig.Chores[choreIdx] = &choreSpec
 	}

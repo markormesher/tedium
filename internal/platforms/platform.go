@@ -18,6 +18,7 @@ type Platform interface {
 	AcceptsDomain(string) bool
 
 	Profile() *schema.PlatformProfile
+	AuthToken() string
 
 	DiscoverRepos() ([]schema.Repo, error)
 	RepoHasTediumConfig(repo *schema.Repo) (bool, error)

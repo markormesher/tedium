@@ -52,6 +52,9 @@ type RepoChoreConfig struct {
 
 	// Environment specifies additional environment variables to be passed to all stages of chore execution. Variables must not start with "TEDIUM_.
 	Environment map[string]string `json:"environment" yaml:"environment"`
+
+	// ExposePlatformToken specifies that the target repo's platform auth token should be exposed to chore steps via the TEDIUM_PLATFORM_TOKEN environment variable. Use with caution.
+	ExposePlatformToken bool `json:"exposePlatformToken" yaml:"exposePlatformToken"`
 }
 
 // ResolvedRepoConfig is the result of taking a target repo, following all "extends" links, and resolving all chore references into their actual spec.

@@ -47,7 +47,6 @@ type ExecutionStep struct {
 type Job struct {
 	Config          *TediumConfig
 	Repo            *Repo
-	RepoConfig      *ResolvedRepoConfig
 	Chore           *ChoreSpec
 	ExecutionSteps  []ExecutionStep
 	PlatformConfig  *PlatformConfig
@@ -55,23 +54,16 @@ type Job struct {
 	FinalBranchName string
 }
 
-// ToEnvironment() generates a set of environment variables that are passed into chore execution steps.
+// ToEnvironment() bundles the Job into a single environment variable that can be unpacked later by the init and finalise stages of an execution.
 func (job *Job) ToEnvironment() (map[string]string, error) {
-	env := make(map[string]string, 0)
-
-	// used directly by Tedium for the init and finalise steps
 	jobStrBytes, err := json.Marshal(job)
 	if err != nil {
 		return nil, fmt.Errorf("Error marshalling Tedium config into environment variable: %w", err)
 	}
-	env["TEDIUM_JOB"] = string(jobStrBytes)
 
-	// made available for convenience in actual chore steps
-	env["TEDIUM_REPO_OWNER"] = job.Repo.OwnerName
-	env["TEDIUM_REPO_NAME"] = job.Repo.Name
-	// ...more
-
-	return env, nil
+	return map[string]string{
+		"TEDIUM_JOB": string(jobStrBytes),
+	}, nil
 }
 
 func JobFromEnvironment() (*Job, error) {

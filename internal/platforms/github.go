@@ -52,6 +52,23 @@ func (p *GitHubPlatform) Profile() *schema.PlatformProfile {
 	return p.profile
 }
 
+func (p *GitHubPlatform) AuthToken() string {
+	if p.auth == nil {
+		return ""
+	}
+
+	switch p.auth.Type {
+	case schema.AuthConfigTypeUserToken:
+		return p.auth.Token
+
+	case schema.AuthConfigTypeApp:
+		return p.auth.AppInstallationToken
+
+	default:
+		return ""
+	}
+}
+
 func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	if p.auth == nil {
 		l.Warn("No auth configured for paltform; skipping repo discovery", "domain", p.domain)

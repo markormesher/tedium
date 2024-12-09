@@ -41,7 +41,14 @@ func Run(conf *schema.TediumConfig) {
 			break
 		}
 
-		err = executors.PrepareJob(job)
+		platform, err := platforms.FromConfig(conf, job.PlatformConfig)
+		if err != nil {
+			l.Error("Failed to get platform for job - aborting this chore", "error", err, "repo", job.Repo.FullName(), "chore", job.Chore.Name)
+			// TODO: count - did some chores fail?
+			continue
+		}
+
+		err = executors.PrepareJob(platform, job)
 		if err != nil {
 			l.Error("Failed to prepare job - aborting this chore", "error", err, "repo", job.Repo.FullName(), "chore", job.Chore.Name)
 			// TODO: count - did some chores fail?
@@ -145,7 +152,6 @@ func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 				jobQueue.Push(schema.Job{
 					Config:          conf,
 					Repo:            targetRepo,
-					RepoConfig:      repoConfig,
 					Chore:           chore,
 					PlatformConfig:  platformConfig,
 					WorkBranchName:  utils.UniqueName("work"),
