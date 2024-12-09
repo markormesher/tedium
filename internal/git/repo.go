@@ -122,7 +122,7 @@ func CommitIfChanged(job *schema.Job, profile *schema.PlatformProfile) (bool, er
 	return true, nil
 }
 
-func TmpBranchHasChanges(job *schema.Job) (bool, error) {
+func TmpBranchDiffersFromFinalBranch(job *schema.Job) (bool, error) {
 	realRepo, _, err := openRepo(job.Repo)
 	if err != nil {
 		return false, err

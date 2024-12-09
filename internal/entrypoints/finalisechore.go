@@ -39,13 +39,13 @@ func FinaliseChore() {
 		return
 	}
 
-	changedSinceLastRun, err := git.TmpBranchHasChanges(job)
+	changedSincePreviousRuns, err := git.TmpBranchDiffersFromFinalBranch(job)
 	if err != nil {
 		l.Error("Error moving changes to final branch", "error", err)
 		os.Exit(1)
 	}
 
-	if !changedSinceLastRun {
+	if !changedSincePreviousRuns {
 		l.Info("Identical changes have already been pushed, no need to overwrite them")
 		os.Exit(0)
 		return
