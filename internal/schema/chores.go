@@ -13,14 +13,14 @@ type ChoreSpec struct {
 	SkipFinaliseStep bool `json:"skipFinaliseStep" yaml:"skipFinaliseStep"`
 
 	// SourceConfig contains the original user-specified config that was resolved into this chore.
-	SourceConfig *RepoChoreConfig
+	SourceConfig *RepoChoreConfig `json:"internal_sourceConfig" yaml:"internal_sourceConfig"`
 }
 
 type ChoreStep struct {
-	Image       string `json:"image" yaml:"image"`
-	Command     string `json:"command" yaml:"command"`
-	Environment map[string]string
-	Internal    bool `json:"-"`
+	Image       string            `json:"image" yaml:"image"`
+	Command     string            `json:"command" yaml:"command"`
+	Environment map[string]string `json:"environment" yaml:"environment"`
+	Internal    bool              `json:"-"`
 }
 
 func (choreSpec *ChoreSpec) PrTitle() string {
