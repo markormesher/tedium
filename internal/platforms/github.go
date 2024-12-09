@@ -22,9 +22,10 @@ type GitHubPlatform struct {
 
 func githubPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (*GitHubPlatform, error) {
 	return &GitHubPlatform{
-		domain:     platformConfig.Domain,
-		auth:       platformConfig.Auth,
-		apiBaseUrl: fmt.Sprintf("https://api.%s", platformConfig.Domain),
+		domain:                 platformConfig.Domain,
+		auth:                   platformConfig.Auth,
+		apiBaseUrl:             fmt.Sprintf("https://api.%s", platformConfig.Domain),
+		originalPlatformConfig: platformConfig,
 	}, nil
 }
 
