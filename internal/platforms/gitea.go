@@ -22,7 +22,7 @@ type GiteaPlatform struct {
 
 func giteaPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (*GiteaPlatform, error) {
 	if platformConfig.Auth != nil && platformConfig.Auth.Type != schema.AuthConfigTypeUserToken {
-		return nil, fmt.Errorf("Cannot construct Gitea platform with auth type other than user token", "domain", platformConfig.Domain)
+		return nil, fmt.Errorf("Cannot construct Gitea platform with auth type other than user token (domain: %s)", platformConfig.Domain)
 	}
 
 	return &GiteaPlatform{

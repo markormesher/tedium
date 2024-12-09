@@ -42,7 +42,7 @@ func (ra *RepoAuth) ToTransportAuth() transport.AuthMethod {
 func RepoFromUrl(repoUrl string) (*Repo, error) {
 	urlParsed, err := url.Parse(repoUrl)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing repo URL: %w")
+		return nil, fmt.Errorf("error parsing repo URL: %w", err)
 	}
 
 	domain := urlParsed.Host
