@@ -45,12 +45,8 @@ func CloneRepo(job *schema.Job, conf *schema.TediumConfig) error {
 	return nil
 }
 
-// CheckoutBranch checks out a branch in a repo, creating it if necessary
-func CheckoutBranch(job *schema.Job, branchName string) error {
-	branchRefName := plumbing.NewBranchReferenceName(branchName)
-
-	l.Info("Checking out a branch for chore", "branch", branchName)
-
+// CheckoutWorkBranch checks out the work branch in a repo, creating it if necessary.
+func CheckoutWorkBranch(job *schema.Job) error {
 	realRepo, worktree, err := openRepo(job.Repo)
 	if err != nil {
 		return err
@@ -65,21 +61,20 @@ func CheckoutBranch(job *schema.Job, branchName string) error {
 		return fmt.Errorf("Refusing to checkout a new branch on an unclean repo")
 	}
 
-	branchExists, err := branchExists(realRepo, branchName)
+	branchExists, err := branchExists(realRepo, job.WorkBranchName)
 	if err != nil {
 		return fmt.Errorf("error checking whether chore branch already exists: %w", err)
 	}
 
-	if !branchExists {
-		l.Info("Branch does not exist - it will be created", "branch", branchName)
-	}
+	l.Info("Checking out work branch for chore", "branch", job.WorkBranchName, "created", !branchExists)
 
+	branchRefName := plumbing.NewBranchReferenceName(job.WorkBranchName)
 	err = worktree.Checkout(&git.CheckoutOptions{
 		Branch: branchRefName,
 		Create: !branchExists,
 	})
 	if err != nil {
-		return fmt.Errorf("error checking out chore branch: %w", err)
+		return fmt.Errorf("error checking out work branch: %w", err)
 	}
 
 	return nil
