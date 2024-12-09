@@ -148,7 +148,7 @@ func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {
 					RepoConfig:      repoConfig,
 					Chore:           chore,
 					PlatformConfig:  platformConfig,
-					TmpBranchName:   utils.UniqueName("tmp"),
+					WorkBranchName:  utils.UniqueName("work"),
 					FinalBranchName: utils.ConvertToBranchName(chore.Name),
 				})
 			}

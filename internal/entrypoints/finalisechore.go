@@ -39,7 +39,7 @@ func FinaliseChore() {
 		return
 	}
 
-	changedSincePreviousRuns, err := git.TmpBranchDiffersFromFinalBranch(job)
+	changedSincePreviousRuns, err := git.WorkBranchDiffersFromFinalBranch(job)
 	if err != nil {
 		l.Error("Error moving changes to final branch", "error", err)
 		os.Exit(1)
@@ -51,7 +51,7 @@ func FinaliseChore() {
 		return
 	}
 
-	err = git.Push(job)
+	err = git.PushWorkBranchToFinalBranch(job)
 	if err != nil {
 		l.Error("Error pushing changes", "error", err)
 		os.Exit(1)

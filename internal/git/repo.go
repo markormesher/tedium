@@ -122,7 +122,7 @@ func CommitIfChanged(job *schema.Job, profile *schema.PlatformProfile) (bool, er
 	return true, nil
 }
 
-func TmpBranchDiffersFromFinalBranch(job *schema.Job) (bool, error) {
+func WorkBranchDiffersFromFinalBranch(job *schema.Job) (bool, error) {
 	realRepo, _, err := openRepo(job.Repo)
 	if err != nil {
 		return false, err
@@ -138,10 +138,10 @@ func TmpBranchDiffersFromFinalBranch(job *schema.Job) (bool, error) {
 		return true, nil
 	}
 
-	// final branch does exist, so check whether it's different to the temp branch
-	tmpBranchCommit, err := getLatestCommit(realRepo, job.TmpBranchName)
+	// final branch does exist, so check whether it's different to the work branch
+	workBranchCommit, err := getLatestCommit(realRepo, job.WorkBranchName)
 	if err != nil {
-		return false, fmt.Errorf("error getting latest commit on temporary branch: %w", err)
+		return false, fmt.Errorf("error getting latest commit on work branch: %w", err)
 	}
 
 	finalBranchCommit, err := getLatestCommit(realRepo, job.FinalBranchName)
@@ -149,12 +149,12 @@ func TmpBranchDiffersFromFinalBranch(job *schema.Job) (bool, error) {
 		return false, fmt.Errorf("error getting latest commit on final branch: %w", err)
 	}
 
-	hasChanges := tmpBranchCommit.TreeHash != finalBranchCommit.TreeHash
+	hasChanges := workBranchCommit.TreeHash != finalBranchCommit.TreeHash
 
 	return hasChanges, nil
 }
 
-func Push(job *schema.Job) error {
+func PushWorkBranchToFinalBranch(job *schema.Job) error {
 	realRepo, _, err := openRepo(job.Repo)
 	if err != nil {
 		return err
@@ -164,7 +164,7 @@ func Push(job *schema.Job) error {
 
 	err = realRepo.Push(&git.PushOptions{
 		RefSpecs: []config.RefSpec{
-			config.RefSpec(plumbing.ReferenceName("refs/heads/"+job.TmpBranchName) + ":" + plumbing.ReferenceName("refs/heads/"+job.FinalBranchName)),
+			config.RefSpec(plumbing.ReferenceName("refs/heads/"+job.WorkBranchName) + ":" + plumbing.ReferenceName("refs/heads/"+job.FinalBranchName)),
 		},
 		Auth:  job.Repo.Auth.ToTransportAuth(),
 		Force: true,

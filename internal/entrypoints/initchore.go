@@ -20,7 +20,7 @@ func InitChore() {
 		os.Exit(1)
 	}
 
-	err = git.CheckoutBranch(job, job.TmpBranchName)
+	err = git.CheckoutBranch(job, job.WorkBranchName)
 	if err != nil {
 		l.Error("Error checking out branch for chore", "error", err)
 		os.Exit(1)

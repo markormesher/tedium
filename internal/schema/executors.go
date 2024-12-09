@@ -51,7 +51,7 @@ type Job struct {
 	Chore           *ChoreSpec
 	ExecutionSteps  []ExecutionStep
 	PlatformConfig  *PlatformConfig
-	TmpBranchName   string
+	WorkBranchName  string
 	FinalBranchName string
 }
 
