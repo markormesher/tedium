@@ -114,7 +114,7 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 
 func (conf TediumConfig) CompileRepoFilters() error {
 	for i := range conf.Platforms {
-		p := conf.Platforms[i]
+		p := &conf.Platforms[i]
 		if p.RepoFiltersRaw == nil || len(p.RepoFiltersRaw) == 0 {
 			p.RepoFilters = nil
 			continue
