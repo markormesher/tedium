@@ -14,13 +14,13 @@ func InitChore() {
 		os.Exit(1)
 	}
 
-	err = git.CloneRepo(job.Repo, job.Config)
+	err = git.CloneRepo(job, job.Config)
 	if err != nil {
 		l.Error("Error cloning repo", "error", err)
 		os.Exit(1)
 	}
 
-	err = git.CheckoutBranchForJob(job)
+	err = git.CheckoutBranch(job, job.TmpBranchName)
 	if err != nil {
 		l.Error("Error checking out branch for chore", "error", err)
 		os.Exit(1)

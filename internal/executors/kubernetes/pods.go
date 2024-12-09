@@ -22,7 +22,7 @@ func (executor *KubernetesExecutor) getContainerStatus(podName string, container
 }
 
 func (executor *KubernetesExecutor) waitForContainerCompletion(podName string, containerIdx int) error {
-	return wait.PollUntilContextTimeout(k8sExecutorContext, 1*time.Second, 5*time.Minute, false, func(ctx context.Context) (bool, error) {
+	return wait.PollUntilContextTimeout(k8sExecutorContext, 2*time.Second, 5*time.Minute, false, func(ctx context.Context) (bool, error) {
 		status, err := executor.getContainerStatus(podName, containerIdx)
 		if err != nil {
 			return false, fmt.Errorf("Error getting container status to check completion: %w", err)

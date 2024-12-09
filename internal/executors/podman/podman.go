@@ -65,8 +65,8 @@ func (p *PodmanExecutor) Init(conf *schema.TediumConfig) error {
 
 func (p *PodmanExecutor) Deinit() error {
 	time.Sleep(5 * time.Second)
-	p.cleanUpContainers()
-	p.cleanUpVolumes()
+	// p.cleanUpContainers()
+	// p.cleanUpVolumes()
 
 	return nil
 }
