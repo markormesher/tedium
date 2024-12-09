@@ -11,6 +11,9 @@ COPY ./internal ./internal
 
 RUN go build -tags remote -o ./build/main ./cmd
 
+COPY ./.git ./.git
+RUN git describe --tags > .version
+
 # ---
 
 FROM debian:bookworm@sha256:17122fe3d66916e55c0cbd5bbf54bb3f87b3582f4d86a755a0fd3498d360f91b
@@ -26,6 +29,9 @@ RUN apt update \
   libgpgme-dev \
   && rm -rf /var/lib/apt/lists/*
 
+RUN mkdir /tedium
+
+COPY --from=builder /app/.version /tedium/.version
 COPY --from=builder /app/build/main /usr/local/bin/tedium
 
 CMD ["tedium", "--config", "/tedium/config.yml"]
