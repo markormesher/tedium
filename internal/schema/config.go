@@ -67,7 +67,12 @@ type ResolvedRepoConfig struct {
 func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 	configFileContent, err := os.ReadFile(configFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading configuration file: %v", err)
+		return nil, fmt.Errorf("error reading configuration file: %w", err)
+	}
+
+	tediumVersion, err := os.ReadFile("/tedium/.version")
+	if err != nil {
+		return nil, fmt.Errorf("error reading Tedium version: %w", err)
 	}
 
 	var conf TediumConfig
@@ -76,7 +81,7 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 		decoder.KnownFields(true)
 		err := decoder.Decode(&conf)
 		if err != nil {
-			return nil, fmt.Errorf("Error parsing configuration file: %v", err)
+			return nil, fmt.Errorf("Error parsing configuration file: %w", err)
 		}
 	} else {
 		return nil, fmt.Errorf("Unacceptable file format: %s", configFilePath)
@@ -84,17 +89,17 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 
 	err = conf.CompileRepoFilters()
 	if err != nil {
-		return nil, fmt.Errorf("Error compiling repo filters in configuration: %v", err)
+		return nil, fmt.Errorf("Error compiling repo filters in configuration: %w", err)
 	}
 
 	// apply defaults
 
 	if conf.Images.Pause == "" {
-		conf.Images.Pause = "ghcr.io/markormesher/tedium-pause:latest"
+		conf.Images.Pause = "ghcr.io/markormesher/tedium-pause:" + string(tediumVersion)
 	}
 
 	if conf.Images.Tedium == "" {
-		conf.Images.Pause = "ghcr.io/markormesher/tedium:latest"
+		conf.Images.Pause = "ghcr.io/markormesher/tedium:" + string(tediumVersion)
 	}
 
 	// sanity checks
