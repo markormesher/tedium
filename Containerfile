@@ -3,14 +3,13 @@ WORKDIR /app
 
 RUN apt update && apt install -y --no-install-recommends libbtrfs-dev libgpgme-dev
 
-# deps
 COPY go.mod go.sum ./
 RUN go mod download
 
-# source code
-COPY . .
+COPY ./cmd ./cmd
+COPY ./internal ./internal
 
-RUN make build
+RUN go build -tags remote -o ./build/main ./cmd
 
 # ---
 
@@ -27,6 +26,6 @@ RUN apt update \
   libgpgme-dev \
   && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/build /app
+COPY --from=builder /app/build/main /usr/local/bin/tedium
 
-CMD ["/app/tedium", "--config", "/tedium/config.yml"]
+CMD ["tedium", "--config", "/tedium/config.yml"]
