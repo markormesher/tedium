@@ -74,11 +74,17 @@ func PrepareJob(platform platforms.Platform, job *schema.Job) error {
 func envForStep(platform platforms.Platform, job *schema.Job, step *schema.ChoreStep) map[string]string {
 	env := make(map[string]string)
 
+	// used by Tedium directly
 	env["TEDIUM_COMMAND"] = step.Command
+
+	// not used by Tedium directly
 	env["TEDIUM_REPO_OWNER"] = job.Repo.OwnerName
 	env["TEDIUM_REPO_NAME"] = job.Repo.Name
 	env["TEDIUM_REPO_DEFAULT_BRANCH"] = job.Repo.DefaultBranch
-	env["GIT_COMMITTER_EMAIL"] = platform.Profile().Email
+	env["TEDIUM_PLATFORM_EMAIL"] = platform.Profile().Email
+	if job.Chore.SourceConfig.ExposePlatformToken {
+		env["TEDIUM_PLATFORM_TOKEN"] = platform.AuthToken()
+	}
 
 	for k, v := range step.Environment {
 		if !step.Internal && strings.HasPrefix(k, "TEDIUM_") {
@@ -94,10 +100,6 @@ func envForStep(platform platforms.Platform, job *schema.Job, step *schema.Chore
 		} else {
 			env[k] = v
 		}
-	}
-
-	if job.Chore.SourceConfig.ExposePlatformToken {
-		env["TEDIUM_PLATFORM_TOKEN"] = platform.AuthToken()
 	}
 
 	return env
