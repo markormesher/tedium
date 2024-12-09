@@ -209,6 +209,10 @@ chores:
     # Optional.
     branch: "my-experimental-change"
 
+    # Expose the platform's auth token to chore steps via the TEDIUM_PLATFORM_TOKEN environment variable. Use with caution.
+    # Optional, defaults to false.
+    exposePlatformToken: true
+
     # Additional environment variables to pass to every step of the chore. Must not start with "TEDIUM_".
     # Optional.
     environment:

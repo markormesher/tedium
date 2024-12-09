@@ -56,6 +56,14 @@ func (p *GiteaPlatform) Profile() *schema.PlatformProfile {
 	return p.profile
 }
 
+func (p *GiteaPlatform) AuthToken() string {
+	if p.auth == nil {
+		return ""
+	}
+
+	return p.auth.Token
+}
+
 func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	if p.auth == nil {
 		l.Warn("No auth configured for paltform; skipping repo discovery", "domain", p.domain)
