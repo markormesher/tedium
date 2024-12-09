@@ -41,7 +41,7 @@ func FinaliseChore() {
 
 	changedSincePreviousRuns, err := git.WorkBranchDiffersFromFinalBranch(job)
 	if err != nil {
-		l.Error("Error moving changes to final branch", "error", err)
+		l.Error("Error comparing work and final branches", "error", err)
 		os.Exit(1)
 	}
 
