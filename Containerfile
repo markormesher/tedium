@@ -28,4 +28,4 @@ RUN apt update \
 
 COPY --from=builder /app/build/main /usr/local/bin/tedium
 
-CMD ["tedium", "--config", "/tedium/config.yml"]
+CMD ["/usr/local/bin/tedium", "--config", "/tedium/config.yml"]
