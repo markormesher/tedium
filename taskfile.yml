@@ -109,3 +109,10 @@ tasks:
             echo "$lint_diff"
             exit 1
           fi
+  test:
+    cmds:
+      - task: test-go-root
+  test-go-root:
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - cmd: go test ./...
