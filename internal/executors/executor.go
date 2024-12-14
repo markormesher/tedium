@@ -38,7 +38,7 @@ func PrepareJob(platform platforms.Platform, job *schema.Job) error {
 	if !job.Chore.SkipCloneStep {
 		tediumStep := schema.ChoreStep{
 			Image:       tediumImage,
-			Command:     "/app/tedium --internal-command initChore",
+			Command:     "/usr/local/bin/tedium --internal-command initChore",
 			Environment: jobEnvBundle,
 			Internal:    true,
 		}
@@ -48,7 +48,7 @@ func PrepareJob(platform platforms.Platform, job *schema.Job) error {
 	if !job.Chore.SkipFinaliseStep {
 		tediumStep := schema.ChoreStep{
 			Image:       tediumImage,
-			Command:     "/app/tedium --internal-command finaliseChore",
+			Command:     "/usr/local/bin/tedium --internal-command finaliseChore",
 			Environment: jobEnvBundle,
 			Internal:    true,
 		}
