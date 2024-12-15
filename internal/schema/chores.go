@@ -5,9 +5,10 @@ package schema
 import "fmt"
 
 type ChoreSpec struct {
-	Name        string      `json:"name" yaml:"name"`
-	Description string      `json:"description" yaml:"description"`
-	Steps       []ChoreStep `json:"steps" yaml:"steps"`
+	Name             string      `json:"name" yaml:"name"`
+	ConventionalType string      `json:"conventionalType" yaml:"conventionalType"`
+	Description      string      `json:"description" yaml:"description"`
+	Steps            []ChoreStep `json:"steps" yaml:"steps"`
 
 	SkipCloneStep    bool `json:"skipCloneStep" yaml:"skipCloneStep"`
 	SkipFinaliseStep bool `json:"skipFinaliseStep" yaml:"skipFinaliseStep"`
@@ -23,8 +24,20 @@ type ChoreStep struct {
 	Internal    bool              `json:"-"`
 }
 
+func (choreSpec *ChoreSpec) CommitMessage() string {
+	prefix := choreSpec.ConventionalType
+	if prefix == "" {
+		prefix = "chore"
+	}
+	return fmt.Sprintf("%s: %s", prefix, choreSpec.Name)
+}
+
 func (choreSpec *ChoreSpec) PrTitle() string {
-	return fmt.Sprintf("[Tedium] %s", choreSpec.Name)
+	prefix := choreSpec.ConventionalType
+	if prefix == "" {
+		prefix = "chore"
+	}
+	return fmt.Sprintf("%s: %s", prefix, choreSpec.Name)
 }
 
 func (choreSpec *ChoreSpec) PrBody() string {

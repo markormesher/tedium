@@ -102,8 +102,7 @@ func CommitIfChanged(job *schema.Job, profile *schema.PlatformProfile) (bool, er
 		return false, fmt.Errorf("Error adding changes: %w", err)
 	}
 
-	msg := fmt.Sprintf("Apply chore: %s", job.Chore.Name)
-	_, err = worktree.Commit(msg, &git.CommitOptions{
+	_, err = worktree.Commit(job.Chore.CommitMessage(), &git.CommitOptions{
 		All: true,
 		Author: &object.Signature{
 			Email: profile.Email,
