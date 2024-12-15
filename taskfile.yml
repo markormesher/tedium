@@ -23,7 +23,7 @@ tasks:
           img_name=$( (grep "LABEL image.name=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
           img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
           if git describe --tags >/dev/null 2>&1; then
-            version=$(git describe --tags)
+            version=":"$(git describe --tags)
             major_version=$(echo "${version}" | cut -d '.' -f 1)
             latest_version_overall=$(git tag -l | sort --reverse --version-sort | head -n 1)
             latest_version_within_major=$(git tag -l | grep "^${major_version}" | sort --reverse --version-sort | head -n 1)
@@ -71,7 +71,7 @@ tasks:
           img_name=$( (grep "LABEL image.name=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
           img_registry=$( (grep "LABEL image.registry=" Containerfile || echo) | head -n 1 | cut -d '=' -f 2-)
           if git describe --tags >/dev/null 2>&1; then
-            version=$(git describe --tags)
+            version=":"$(git describe --tags)
             major_version=$(echo "${version}" | cut -d '.' -f 1)
             latest_version_overall=$(git tag -l | sort --reverse --version-sort | head -n 1)
             latest_version_within_major=$(git tag -l | grep "^${major_version}" | sort --reverse --version-sort | head -n 1)
