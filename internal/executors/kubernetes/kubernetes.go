@@ -120,11 +120,12 @@ func (executor *KubernetesExecutor) ExecuteChore(job *schema.Job) error {
 	for i := range job.ExecutionSteps {
 		step := job.ExecutionSteps[i]
 		pod.Spec.Containers[i] = v1.Container{
-			Name:    step.Label,
-			Image:   executor.conf.Images.Pause,
-			Env:     environmentFromMap(step.Environment),
-			Command: []string{"/bin/sh", "-c"},
-			Args:    []string{"echo \"${TEDIUM_COMMAND}\" | /bin/sh"},
+			Name:            step.Label,
+			Image:           executor.conf.Images.Pause,
+			ImagePullPolicy: "Always",
+			Env:             environmentFromMap(step.Environment),
+			Command:         []string{"/bin/sh", "-c"},
+			Args:            []string{"echo \"${TEDIUM_COMMAND}\" | /bin/sh"},
 			VolumeMounts: []v1.VolumeMount{
 				{
 					Name:      "repo",
