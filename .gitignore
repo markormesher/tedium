@@ -1,4 +1,5 @@
 build/
+.imgrefs
 
 # keep config private
 config*.json
