@@ -10,22 +10,24 @@ import (
 )
 
 type GitHubPlatform struct {
+	schema.PlatformConfig
+
 	// supplied via config
 	domain string
 	auth   *schema.AuthConfig
 
 	// generated locally
-	apiBaseUrl             string
-	originalPlatformConfig *schema.PlatformConfig
-	profile                *schema.PlatformProfile
+	apiBaseUrl string
+	profile    *schema.PlatformProfile
 }
 
 func githubPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (*GitHubPlatform, error) {
 	return &GitHubPlatform{
-		domain:                 platformConfig.Domain,
-		auth:                   platformConfig.Auth,
-		apiBaseUrl:             fmt.Sprintf("https://api.%s", platformConfig.Domain),
-		originalPlatformConfig: platformConfig,
+		PlatformConfig: *platformConfig,
+
+		domain:     platformConfig.Domain,
+		auth:       platformConfig.Auth,
+		apiBaseUrl: fmt.Sprintf("https://api.%s", platformConfig.Domain),
 	}, nil
 }
 
@@ -42,6 +44,10 @@ func (p *GitHubPlatform) Init(conf *schema.TediumConfig) error {
 
 func (p *GitHubPlatform) Deinit() error {
 	return nil
+}
+
+func (p *GitHubPlatform) Config() schema.PlatformConfig {
+	return p.PlatformConfig
 }
 
 func (p *GitHubPlatform) AcceptsDomain(domain string) bool {
@@ -298,7 +304,7 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 // internal methods
 
 func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
-	if p.auth == nil || p.originalPlatformConfig.SkipDiscovery {
+	if p.auth == nil || p.SkipDiscovery {
 		return nil
 	}
 

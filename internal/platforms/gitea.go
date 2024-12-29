@@ -10,14 +10,15 @@ import (
 )
 
 type GiteaPlatform struct {
+	schema.PlatformConfig
+
 	// supplied via config
 	domain string
 	auth   *schema.AuthConfig
 
 	// generated locally
-	apiBaseUrl             string
-	originalPlatformConfig *schema.PlatformConfig
-	profile                *schema.PlatformProfile
+	apiBaseUrl string
+	profile    *schema.PlatformProfile
 }
 
 func giteaPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (*GiteaPlatform, error) {
@@ -26,10 +27,11 @@ func giteaPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.P
 	}
 
 	return &GiteaPlatform{
-		domain:                 platformConfig.Domain,
-		auth:                   platformConfig.Auth,
-		apiBaseUrl:             fmt.Sprintf("https://%s/api/v1", platformConfig.Domain),
-		originalPlatformConfig: platformConfig,
+		PlatformConfig: *platformConfig,
+
+		domain:     platformConfig.Domain,
+		auth:       platformConfig.Auth,
+		apiBaseUrl: fmt.Sprintf("https://%s/api/v1", platformConfig.Domain),
 	}, nil
 }
 
@@ -46,6 +48,10 @@ func (p *GiteaPlatform) Init(conf *schema.TediumConfig) error {
 
 func (p *GiteaPlatform) Deinit() error {
 	return nil
+}
+
+func (p *GiteaPlatform) Config() schema.PlatformConfig {
+	return p.PlatformConfig
 }
 
 func (p *GiteaPlatform) AcceptsDomain(domain string) bool {
@@ -232,7 +238,7 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 // internal methods
 
 func (p *GiteaPlatform) loadProfile(conf *schema.TediumConfig) error {
-	if p.auth == nil || p.originalPlatformConfig.SkipDiscovery {
+	if p.auth == nil || p.SkipDiscovery {
 		return nil
 	}
 
