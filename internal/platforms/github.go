@@ -50,6 +50,10 @@ func (p *GitHubPlatform) Config() schema.PlatformConfig {
 	return p.PlatformConfig
 }
 
+func (p *GitHubPlatform) ApiBaseUrl() string {
+	return p.apiBaseUrl
+}
+
 func (p *GitHubPlatform) AcceptsDomain(domain string) bool {
 	return domain == p.domain
 }

@@ -54,6 +54,10 @@ func (p *GiteaPlatform) Config() schema.PlatformConfig {
 	return p.PlatformConfig
 }
 
+func (p *GiteaPlatform) ApiBaseUrl() string {
+	return p.apiBaseUrl
+}
+
 func (p *GiteaPlatform) AcceptsDomain(domain string) bool {
 	return domain == p.domain
 }
