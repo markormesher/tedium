@@ -14,6 +14,7 @@ var platformCache []Platform
 type Platform interface {
 	Init(conf *schema.TediumConfig) error
 	Deinit() error
+	Config() schema.PlatformConfig
 
 	AcceptsDomain(string) bool
 

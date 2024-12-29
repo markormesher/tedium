@@ -82,6 +82,8 @@ func envForStep(platform platforms.Platform, job *schema.Job, step *schema.Chore
 	env["TEDIUM_REPO_NAME"] = job.Repo.Name
 	env["TEDIUM_REPO_CLONE_URL"] = job.Repo.CloneUrl
 	env["TEDIUM_REPO_DEFAULT_BRANCH"] = job.Repo.DefaultBranch
+	env["TEDIUM_PLATFORM_TYPE"] = platform.Config().Type
+	env["TEDIUM_PLATFORM_DOMAIN"] = platform.Config().Domain
 	env["TEDIUM_PLATFORM_EMAIL"] = platform.Profile().Email
 	if job.Chore.SourceConfig.ExposePlatformToken {
 		env["TEDIUM_PLATFORM_TOKEN"] = platform.AuthToken()
