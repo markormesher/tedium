@@ -6,6 +6,16 @@ includes:
     taskfile: taskfile.local.yml
     optional: true
 tasks:
+  deps:
+    cmds:
+      - task: deps-go-root
+  deps-go:
+    cmds:
+      - task: deps-go-root
+  deps-go-root:
+    dir: '{{.ROOT_DIR}}'
+    cmds:
+      - cmd: go mod tidy && go mod download --json
   imgbuild:
     cmds:
       - task: imgbuild-root
