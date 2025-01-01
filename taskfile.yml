@@ -152,7 +152,7 @@ tasks:
     dir: '{{.ROOT_DIR}}'
     cmds:
       - cmd: |-
-          lint_diff=$(gofmt -e -s -d .)
+          lint_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
           if [[ ! -z "$lint_diff" ]]; then
             echo "Lint errors:"
             echo "$lint_diff"
