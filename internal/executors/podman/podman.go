@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os/user"
-	"time"
 
 	"github.com/containers/podman/v5/pkg/bindings"
+	"github.com/containers/podman/v5/pkg/bindings/containers"
 	"github.com/containers/podman/v5/pkg/specgen"
 	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/schema"
@@ -21,9 +21,6 @@ type PodmanExecutor struct {
 	// private state
 	conf *schema.TediumConfig
 	conn context.Context
-
-	volumeNames    []string
-	containerNames []string
 }
 
 func FromConfig(c *schema.PodmanExecutorConfig) (*PodmanExecutor, error) {
@@ -56,44 +53,63 @@ func (p *PodmanExecutor) Init(conf *schema.TediumConfig) error {
 	}
 	p.conn = conn
 
-	// keep track of resources so we can be sure to clean up later
-	p.volumeNames = make([]string, 0)
-	p.containerNames = make([]string, 0)
-
-	return nil
-}
-
-func (p *PodmanExecutor) Deinit() error {
-	time.Sleep(5 * time.Second)
-	p.cleanUpContainers()
-	p.cleanUpVolumes()
-
 	return nil
 }
 
 func (p *PodmanExecutor) ExecuteChore(job *schema.Job) error {
+	// create a temporary volume to hold the target repo and defer its cleanup
 	repoVolume, err := p.createVolume("repo")
 	if err != nil {
 		return err
 	}
 
-	for i := range job.ExecutionSteps {
-		step := job.ExecutionSteps[i]
+	defer func() {
+		p.deleteVolumeIfExists(repoVolume)
+	}()
 
-		s := specgen.NewSpecGenerator(step.Image, false)
-		s.Name = utils.UniqueName(step.Label)
-		s.Command = []string{"/bin/sh", "-c", "echo \"${TEDIUM_COMMAND}\" | /bin/sh"}
-		s.Env = step.Environment
-		s.Volumes = []*specgen.NamedVolume{
+	// run each step in a new container
+	for _, step := range job.ExecutionSteps {
+		spec := specgen.NewSpecGenerator(step.Image, false)
+		spec.Name = utils.UniqueName(step.Label)
+		spec.Command = []string{"/bin/sh", "-c", "echo \"${TEDIUM_COMMAND}\" | /bin/sh"}
+		spec.Env = step.Environment
+		spec.Volumes = []*specgen.NamedVolume{
 			{
 				Name: repoVolume,
 				Dest: "/tedium/repo",
 			},
 		}
 
-		err = p.runContainerToCompletion(s)
+		p.pullImage(spec.Image)
+
+		createResponse, err := containers.CreateWithSpec(p.conn, spec, nil)
 		if err != nil {
-			return err
+			return fmt.Errorf("Error creating container from spec: %w", err)
+		}
+
+		defer func() {
+			p.deleteContainerIfExists(spec.Name)
+		}()
+
+		l.Info("Starting container", "container", spec.Name)
+		err = containers.Start(p.conn, createResponse.ID, nil)
+		if err != nil {
+			return fmt.Errorf("Error starting container: %w", err)
+		}
+
+		exitCode, err := p.waitForContainerCompletion(spec.Name)
+		if err != nil {
+			return fmt.Errorf("error waiting for container to complete", err)
+		}
+		l.Info("container finished", "container", spec.Name, "exitCode", exitCode)
+
+		err = p.printContainerLogs(spec.Name)
+		if err != nil {
+			return fmt.Errorf("error printing container logs: %w", err)
+		}
+
+		if exitCode != 0 {
+			return fmt.Errorf("container finished with a non-zero exit code: %d", exitCode)
 		}
 	}
 

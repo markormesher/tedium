@@ -77,13 +77,6 @@ func Run(conf *schema.TediumConfig) {
 	}
 
 	l.Info("Stats", "stats", runStats)
-
-	l.Info("Cleaning up executor")
-	err = executor.Deinit()
-	if err != nil {
-		l.Error("Error de-initialising executor", "error", err)
-		os.Exit(1)
-	}
 }
 
 func gatherJobs(conf *schema.TediumConfig) *utils.Queue[schema.Job] {

@@ -9,71 +9,10 @@ import (
 	"github.com/containers/podman/v5/libpod/define"
 	"github.com/containers/podman/v5/pkg/bindings/containers"
 	"github.com/containers/podman/v5/pkg/bindings/images"
-	"github.com/containers/podman/v5/pkg/specgen"
 	"github.com/markormesher/tedium/internal/utils"
 )
 
 var logPrinterLock sync.Mutex
-
-func (p *PodmanExecutor) runContainerToCompletion(spec *specgen.SpecGenerator) error {
-	p.containerNames = append(p.containerNames, spec.Name)
-
-	p.pullImage(spec.Image)
-
-	createResponse, err := containers.CreateWithSpec(p.conn, spec, nil)
-	if err != nil {
-		return fmt.Errorf("Error creating container from spec: %w", err)
-	}
-
-	l.Info("Starting container", "container", spec.Name)
-	err = containers.Start(p.conn, createResponse.ID, nil)
-	if err != nil {
-		return fmt.Errorf("Error starting container: %w", err)
-	}
-
-	exitCode, err := containers.Wait(p.conn, spec.Name, &containers.WaitOptions{
-		Condition: []define.ContainerStatus{define.ContainerStateStopped, define.ContainerStateExited},
-	})
-	if err != nil {
-		return fmt.Errorf("Error waiting for container to stop: %w", err)
-	}
-	l.Info("Container finished", "container", spec.Name, "exitCode", exitCode)
-
-	// wait for logs to finish - there can be a slight lag
-	time.Sleep(2 * time.Second)
-
-	// acquire a lock for output printing, so we don't mingle logs from multiple containers
-	logPrinterLock.Lock()
-	defer logPrinterLock.Unlock()
-
-	l.Info("START of logs for container", "container", spec.Name)
-	logPrinter := make(chan string)
-	go func() {
-		for str := range logPrinter {
-			str = strings.TrimSpace(str)
-			if len(str) > 0 {
-				fmt.Println(str)
-			}
-		}
-	}()
-
-	logOpts := containers.LogOptions{
-		Follow: utils.BoolPtr(false),
-		Stderr: utils.BoolPtr(true),
-		Stdout: utils.BoolPtr(true),
-	}
-
-	containers.Logs(p.conn, createResponse.ID, &logOpts, logPrinter, logPrinter)
-	close(logPrinter)
-
-	l.Info("END of logs for container", "container", spec.Name)
-
-	if exitCode != 0 {
-		return fmt.Errorf("Container finished with a non-zero exit code: %d", exitCode)
-	}
-
-	return nil
-}
 
 func (p *PodmanExecutor) pullImage(name string) error {
 	exists, err := images.Exists(p.conn, name, nil)
@@ -95,10 +34,47 @@ func (p *PodmanExecutor) pullImage(name string) error {
 	return nil
 }
 
-func (p *PodmanExecutor) cleanUpContainers() {
-	for _, containerName := range p.containerNames {
-		p.deleteContainerIfExists(containerName)
+func (p *PodmanExecutor) waitForContainerCompletion(name string) (int, error) {
+	exitCode, err := containers.Wait(p.conn, name, &containers.WaitOptions{
+		Condition: []define.ContainerStatus{define.ContainerStateStopped, define.ContainerStateExited},
+	})
+	if err != nil {
+		return -1, fmt.Errorf("Error waiting for container to stop: %w", err)
 	}
+
+	return int(exitCode), nil
+}
+
+func (p *PodmanExecutor) printContainerLogs(name string) error {
+	// wait for logs to finish - there can be a slight lag
+	time.Sleep(2 * time.Second)
+
+	// acquire a lock for output printing, so we don't mingle logs from multiple containers
+	logPrinterLock.Lock()
+	defer logPrinterLock.Unlock()
+
+	logPrinter := make(chan string)
+	go func() {
+		for str := range logPrinter {
+			str = strings.TrimSpace(str)
+			if len(str) > 0 {
+				fmt.Println(str)
+			}
+		}
+	}()
+
+	logOpts := containers.LogOptions{
+		Follow: utils.BoolPtr(false),
+		Stderr: utils.BoolPtr(true),
+		Stdout: utils.BoolPtr(true),
+	}
+
+	l.Info("START of logs for container", "container", name)
+	containers.Logs(p.conn, name, &logOpts, logPrinter, logPrinter)
+	close(logPrinter)
+	l.Info("END of logs for container", "container", name)
+
+	return nil
 }
 
 func (p *PodmanExecutor) deleteContainerIfExists(name string) {
