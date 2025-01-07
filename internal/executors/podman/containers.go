@@ -3,6 +3,7 @@ package podman
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/containers/podman/v5/libpod/define"
@@ -12,15 +13,7 @@ import (
 	"github.com/markormesher/tedium/internal/utils"
 )
 
-func printLogs(ch <-chan string) {
-	for {
-		str := <-ch
-		str = strings.TrimSpace(str)
-		if len(str) > 0 {
-			fmt.Println(str)
-		}
-	}
-}
+var logPrinterLock sync.Mutex
 
 func (p *PodmanExecutor) runContainerToCompletion(spec *specgen.SpecGenerator) error {
 	p.containerNames = append(p.containerNames, spec.Name)
@@ -32,34 +25,48 @@ func (p *PodmanExecutor) runContainerToCompletion(spec *specgen.SpecGenerator) e
 		return fmt.Errorf("Error creating container from spec: %w", err)
 	}
 
-	stdOutPrinter := make(chan string)
-	stdErrPrinter := make(chan string)
-	go printLogs(stdOutPrinter)
-	go printLogs(stdErrPrinter)
-
-	defer func() {
-		close(stdOutPrinter)
-		close(stdErrPrinter)
-	}()
-
-	go containers.Logs(p.conn, createResponse.ID, &containers.LogOptions{Follow: utils.BoolPtr(true)}, stdOutPrinter, stdErrPrinter)
-
 	l.Info("Starting container", "container", spec.Name)
 	err = containers.Start(p.conn, createResponse.ID, nil)
 	if err != nil {
 		return fmt.Errorf("Error starting container: %w", err)
 	}
 
-	// TODO: handle reaching other statuses
 	exitCode, err := containers.Wait(p.conn, spec.Name, &containers.WaitOptions{
-		Condition: []define.ContainerStatus{define.ContainerStateStopped},
+		Condition: []define.ContainerStatus{define.ContainerStateStopped, define.ContainerStateExited},
 	})
 	if err != nil {
 		return fmt.Errorf("Error waiting for container to stop: %w", err)
 	}
+	l.Info("Container finished", "container", spec.Name, "exitCode", exitCode)
 
-	// TODO: find a better way of waiting for logs to finish
+	// wait for logs to finish - there can be a slight lag
 	time.Sleep(2 * time.Second)
+
+	// acquire a lock for output printing, so we don't mingle logs from multiple containers
+	logPrinterLock.Lock()
+	defer logPrinterLock.Unlock()
+
+	l.Info("START of logs for container", "container", spec.Name)
+	logPrinter := make(chan string)
+	go func() {
+		for str := range logPrinter {
+			str = strings.TrimSpace(str)
+			if len(str) > 0 {
+				fmt.Println(str)
+			}
+		}
+	}()
+
+	logOpts := containers.LogOptions{
+		Follow: utils.BoolPtr(false),
+		Stderr: utils.BoolPtr(true),
+		Stdout: utils.BoolPtr(true),
+	}
+
+	containers.Logs(p.conn, createResponse.ID, &logOpts, logPrinter, logPrinter)
+	close(logPrinter)
+
+	l.Info("END of logs for container", "container", spec.Name)
 
 	if exitCode != 0 {
 		return fmt.Errorf("Container finished with a non-zero exit code: %d", exitCode)
@@ -80,7 +87,7 @@ func (p *PodmanExecutor) pullImage(name string) error {
 	}
 
 	l.Info("Pulling container image", "image", name)
-	_, err = images.Pull(p.conn, name, nil)
+	_, err = images.Pull(p.conn, name, &images.PullOptions{Quiet: utils.BoolPtr(true)})
 	if err != nil {
 		return fmt.Errorf("Error pulling image: %w", err)
 	}
