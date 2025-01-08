@@ -157,6 +157,10 @@ autoEnrollment:
       - "https://github.com/example/tedium-config-all-repos"
       - "https://github.com/example/tedium-config-go-projects"
     chores: []
+
+# How many chores to attempt to run at once (upper bound - actual concurrency may be lower).
+# Optional, defaults to 1.
+choreConcurrency: 5
 ```
 
 <details>

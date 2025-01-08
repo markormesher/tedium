@@ -39,10 +39,10 @@ func Run(conf *schema.TediumConfig) {
 	}
 
 	// create job queue and worker pool
-	concurrency := 2
+	l.Info("Starting worker pool")
 	var workerWg sync.WaitGroup
-	jobQueue := make(chan schema.Job, 50)
-	for range concurrency {
+	jobQueue := make(chan schema.Job, conf.ChoreConcurrency*10)
+	for range conf.ChoreConcurrency {
 		workerWg.Add(1)
 		go func() {
 			for job := range jobQueue {
@@ -53,10 +53,10 @@ func Run(conf *schema.TediumConfig) {
 	}
 
 	// gather jobs and feed them to the queue
-	l.Info("Starting to gather chores to do")
+	l.Info("Starting to gather chores")
 	gatherJobs(conf, *&jobQueue)
 	close(jobQueue)
-	l.Info("Finished gathering chores to do")
+	l.Info("Finished gathering chores")
 
 	// wait for our workers to finish handling all the jobs...
 	workerWg.Wait()
