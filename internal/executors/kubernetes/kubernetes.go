@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/schema"
@@ -20,6 +21,8 @@ import (
 var l = logging.Logger
 var k8sExecutorContext = context.TODO()
 
+var logPrinterLock sync.Mutex
+
 type KubernetesExecutor struct {
 	KubeconfigPath string
 	Namespace      string
@@ -28,8 +31,6 @@ type KubernetesExecutor struct {
 	conf      *schema.TediumConfig
 	clientSet *k8s.Clientset
 	podClient corev1.PodInterface
-
-	podNames []string
 }
 
 func FromConfig(c *schema.KubernetesExecutorConfig) (*KubernetesExecutor, error) {
@@ -75,28 +76,14 @@ func (executor *KubernetesExecutor) Init(conf *schema.TediumConfig) error {
 	return nil
 }
 
-func (executor *KubernetesExecutor) Deinit() error {
-	for _, podName := range executor.podNames {
-		err := executor.podClient.Delete(k8sExecutorContext, podName, metav1.DeleteOptions{})
-		if err != nil {
-			return fmt.Errorf("Error deleting execution pod: %w", err)
-		}
-	}
-
-	return nil
-}
-
 func (executor *KubernetesExecutor) ExecuteChore(job *schema.Job) error {
 	totalSteps := len(job.Chore.Steps)
 
 	// annoying hack so we can pass an *int64 below
-	var zero int64 = 0
+	zero := int64(0)
 
-	// setup all the pods we'll need, using the pause image that does nothing
-
+	// configure the execution pod, using the pause image that does nothing in each step for now
 	podName := utils.UniqueName("executor")
-	executor.podNames = append(executor.podNames, podName)
-
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: executor.Namespace,
@@ -135,14 +122,21 @@ func (executor *KubernetesExecutor) ExecuteChore(job *schema.Job) error {
 		}
 	}
 
+	// create the pod and defer its cleanup
 	podsClient := executor.clientSet.CoreV1().Pods(executor.Namespace)
 	_, err := podsClient.Create(k8sExecutorContext, pod, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("Error creating execution pod: %w", err)
 	}
 
-	// run actual steps by swapping the image on each container within the pod
+	defer func() {
+		err := executor.podClient.Delete(k8sExecutorContext, podName, metav1.DeleteOptions{})
+		if err != nil {
+			l.Error("error deleting execution pod", "error", err)
+		}
+	}()
 
+	// run actual steps by swapping the image on each container within the pod
 	for i := range job.ExecutionSteps {
 		step := job.ExecutionSteps[i]
 		patch := schema.JsonPatch{
@@ -163,16 +157,23 @@ func (executor *KubernetesExecutor) ExecuteChore(job *schema.Job) error {
 			return fmt.Errorf("Error patching pod to set image: %w", err)
 		}
 
-		go func() {
-			err := executor.tailContainerLogs(podName, i)
-			if err != nil {
-				l.Error("Failed to tail container logs", "err", err)
-			}
-		}()
-
-		err = executor.waitForContainerCompletion(podName, i)
+		exitCode, err := executor.waitForContainerCompletion(podName, i)
 		if err != nil {
-			return fmt.Errorf("Step failed: %w", err)
+			return fmt.Errorf("error waiting for pod container to complete: %w", err)
+		}
+
+		// acquire a lock for output printing, so we don't mingle logs from multiple containers
+		logPrinterLock.Lock()
+		l.Info("START of logs for container", "pod", podName, "container", i)
+		err = executor.printContainerLogs(podName, i)
+		if err != nil {
+			l.Error("failed to print container logs", "err", err)
+		}
+		l.Info("END of logs for container", "pod", podName, "container", i)
+		logPrinterLock.Unlock()
+
+		if exitCode != 0 {
+			return fmt.Errorf("container finished with a non-zero exit code: %d", exitCode)
 		}
 	}
 

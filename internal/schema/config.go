@@ -34,6 +34,9 @@ type TediumConfig struct {
 		Enabled bool       `json:"enabled" yaml:"enabled"`
 		Config  RepoConfig `json:"config" yaml:"config"`
 	} `json:"autoEnrollment" yaml:"autoEnrollment"`
+
+	// ChoreConcurrency defines how many chores Tedium should attempt to run concurrently. It is an upper bound and may not be reached. Defaults to 1.
+	ChoreConcurrency int `json:"choreConcurrency" yaml:"choreConcurrency"`
 }
 
 // RepoConfig is read from a target repo. The main purpose is to define which chores are to be applied.
@@ -95,6 +98,10 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 
 	if conf.Images.Tedium == "" {
 		conf.Images.Tedium = "ghcr.io/markormesher/tedium:v0"
+	}
+
+	if conf.ChoreConcurrency < 1 {
+		conf.ChoreConcurrency = 1
 	}
 
 	// sanity checks

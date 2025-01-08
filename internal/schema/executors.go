@@ -30,7 +30,6 @@ type KubernetesExecutorConfig struct {
 
 type Executor interface {
 	Init(conf *TediumConfig) error
-	Deinit() error
 	ExecuteChore(job *Job) error
 }
 

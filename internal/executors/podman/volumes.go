@@ -18,15 +18,7 @@ func (p *PodmanExecutor) createVolume(role string) (string, error) {
 		return "", fmt.Errorf("Error creating volume '%s': %w", name, err)
 	}
 
-	p.volumeNames = append(p.volumeNames, name)
-
 	return name, nil
-}
-
-func (p *PodmanExecutor) cleanUpVolumes() {
-	for _, volumeName := range p.volumeNames {
-		p.deleteVolumeIfExists(volumeName)
-	}
 }
 
 func (p *PodmanExecutor) deleteVolumeIfExists(name string) {
