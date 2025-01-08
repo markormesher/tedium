@@ -13,19 +13,19 @@ import (
 
 var l = logging.Logger
 
-func FromExecutorConfig(ec *schema.ExecutorConfig) (schema.Executor, error) {
+func FromExecutorConfig(ec schema.ExecutorConfig) (schema.Executor, error) {
 	switch {
 	case ec.Podman != nil:
-		return podman.FromConfig(ec.Podman)
+		return podman.FromConfig(*ec.Podman)
 
 	case ec.Kubernetes != nil:
-		return kubernetes.FromConfig(ec.Kubernetes)
+		return kubernetes.FromConfig(*ec.Kubernetes)
 	}
 
 	return nil, fmt.Errorf("No executor specified")
 }
 
-func PrepareJob(platform platforms.Platform, job *schema.Job) error {
+func PrepareJob(platform platforms.Platform, job schema.Job) error {
 	tediumImage := job.Config.Images.Tedium
 
 	// add our own steps to the chore (editing in place)
@@ -58,8 +58,7 @@ func PrepareJob(platform platforms.Platform, job *schema.Job) error {
 	// convert chore steps into execution steps
 
 	job.ExecutionSteps = make([]schema.ExecutionStep, len(job.Chore.Steps))
-	for i := range job.Chore.Steps {
-		step := &job.Chore.Steps[i]
+	for i, step := range job.Chore.Steps {
 		job.ExecutionSteps[i] = schema.ExecutionStep{
 			Label:       fmt.Sprintf("step-%d", i+1),
 			Image:       step.Image,
@@ -71,7 +70,7 @@ func PrepareJob(platform platforms.Platform, job *schema.Job) error {
 	return nil
 }
 
-func envForStep(platform platforms.Platform, job *schema.Job, step *schema.ChoreStep) map[string]string {
+func envForStep(platform platforms.Platform, job schema.Job, step schema.ChoreStep) map[string]string {
 	env := make(map[string]string)
 
 	// used by Tedium directly

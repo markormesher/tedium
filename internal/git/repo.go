@@ -19,7 +19,7 @@ var l = logging.Logger
 // repos are only ever cloned inside an execution container, so this path doesn't change per-repo
 var repoClonePath = "/tedium/repo"
 
-func CloneRepo(job *schema.Job, conf *schema.TediumConfig) error {
+func CloneRepo(job schema.Job, conf schema.TediumConfig) error {
 	repo := job.Repo
 
 	l.Info("Cloning repo", "url", repo.CloneUrl)
@@ -46,8 +46,8 @@ func CloneRepo(job *schema.Job, conf *schema.TediumConfig) error {
 }
 
 // CheckoutWorkBranch checks out the work branch in a repo, creating it if necessary.
-func CheckoutWorkBranch(job *schema.Job) error {
-	realRepo, worktree, err := openRepo(job.Repo)
+func CheckoutWorkBranch(job schema.Job) error {
+	realRepo, worktree, err := openRepo()
 	if err != nil {
 		return err
 	}
@@ -80,8 +80,8 @@ func CheckoutWorkBranch(job *schema.Job) error {
 	return nil
 }
 
-func CommitIfChanged(job *schema.Job, profile *schema.PlatformProfile) (bool, error) {
-	_, worktree, err := openRepo(job.Repo)
+func CommitIfChanged(job schema.Job, profile schema.PlatformProfile) (bool, error) {
+	_, worktree, err := openRepo()
 	if err != nil {
 		return false, err
 	}
@@ -116,8 +116,8 @@ func CommitIfChanged(job *schema.Job, profile *schema.PlatformProfile) (bool, er
 	return true, nil
 }
 
-func WorkBranchDiffersFromFinalBranch(job *schema.Job) (bool, error) {
-	realRepo, _, err := openRepo(job.Repo)
+func WorkBranchDiffersFromFinalBranch(job schema.Job) (bool, error) {
+	realRepo, _, err := openRepo()
 	if err != nil {
 		return false, err
 	}
@@ -148,8 +148,8 @@ func WorkBranchDiffersFromFinalBranch(job *schema.Job) (bool, error) {
 	return hasChanges, nil
 }
 
-func PushWorkBranchToFinalBranch(job *schema.Job) error {
-	realRepo, _, err := openRepo(job.Repo)
+func PushWorkBranchToFinalBranch(job schema.Job) error {
+	realRepo, _, err := openRepo()
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,7 @@ func PushWorkBranchToFinalBranch(job *schema.Job) error {
 	return nil
 }
 
-func openRepo(r *schema.Repo) (*git.Repository, *git.Worktree, error) {
+func openRepo() (*git.Repository, *git.Worktree, error) {
 	repo, err := git.PlainOpen(repoClonePath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error opening repo: %w", err)
@@ -184,8 +184,8 @@ func openRepo(r *schema.Repo) (*git.Repository, *git.Worktree, error) {
 	return repo, worktree, nil
 }
 
-func fetchAll(repo *schema.Repo) error {
-	realRepo, _, err := openRepo(repo)
+func fetchAll(repo schema.Repo) error {
+	realRepo, _, err := openRepo()
 	if err != nil {
 		return fmt.Errorf("Error opening repo: %w", err)
 	}

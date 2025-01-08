@@ -23,10 +23,10 @@ type RunStats struct {
 
 var runStats = &RunStats{}
 
-func Run(conf *schema.TediumConfig) {
+func Run(conf schema.TediumConfig) {
 	// setup the executor (this is cheap, it doesn't matter if we end up having no chores)
 	l.Info("Initialising executor")
-	executor, err := executors.FromExecutorConfig(&conf.Executor)
+	executor, err := executors.FromExecutorConfig(conf.Executor)
 	if err != nil {
 		l.Error("Could not initialise executor", "error", err)
 		os.Exit(1)
@@ -64,11 +64,9 @@ func Run(conf *schema.TediumConfig) {
 	l.Info("Stats", "stats", runStats)
 }
 
-func gatherJobs(conf *schema.TediumConfig, jobQueue chan<- schema.Job) {
+func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job) {
 	// init ALL platforms before trying to use ANY of them
-	for id := range conf.Platforms {
-		platformConfig := &conf.Platforms[id]
-
+	for _, platformConfig := range conf.Platforms {
 		l.Info("Initialising platform", "domain", platformConfig.Domain)
 		platform, err := platforms.FromConfig(conf, platformConfig)
 		if err != nil {
@@ -83,8 +81,7 @@ func gatherJobs(conf *schema.TediumConfig, jobQueue chan<- schema.Job) {
 		}
 	}
 
-	for id := range conf.Platforms {
-		platformConfig := &conf.Platforms[id]
+	for _, platformConfig := range conf.Platforms {
 		platform := platforms.FromDomain(platformConfig.Domain)
 		if platform == nil {
 			// this shouldn't ever happen
@@ -106,9 +103,7 @@ func gatherJobs(conf *schema.TediumConfig, jobQueue chan<- schema.Job) {
 		l.Info("Finished discovering repos", "count", len(allRepos))
 		runStats.ReposDiscovered = len(allRepos)
 
-		for targetRepoIdx := range allRepos {
-			targetRepo := &allRepos[targetRepoIdx]
-
+		for _, targetRepo := range allRepos {
 			if targetRepo.Archived {
 				l.Info("Repo is archived - skipping", "repo", targetRepo.FullName())
 				runStats.ReposSkipped++
@@ -143,8 +138,7 @@ func gatherJobs(conf *schema.TediumConfig, jobQueue chan<- schema.Job) {
 
 			l.Info("Resolved chores for repo", "repo", targetRepo.FullName(), "chores", len(repoConfig.Chores))
 
-			for choreIdx := range repoConfig.Chores {
-				chore := repoConfig.Chores[choreIdx]
+			for _, chore := range repoConfig.Chores {
 				jobQueue <- schema.Job{
 					Config:          conf,
 					Repo:            targetRepo,
@@ -158,8 +152,7 @@ func gatherJobs(conf *schema.TediumConfig, jobQueue chan<- schema.Job) {
 	}
 
 	// de-init platforms after ALL of them are finished with
-	for id := range conf.Platforms {
-		platformConfig := &conf.Platforms[id]
+	for _, platformConfig := range conf.Platforms {
 		platform := platforms.FromDomain(platformConfig.Domain)
 		if platform == nil {
 			// this shouldn't ever happen
@@ -176,7 +169,7 @@ func gatherJobs(conf *schema.TediumConfig, jobQueue chan<- schema.Job) {
 	}
 }
 
-func executeJob(conf *schema.TediumConfig, executor schema.Executor, job schema.Job) {
+func executeJob(conf schema.TediumConfig, executor schema.Executor, job schema.Job) {
 	runStats.JobsDiscovered++
 
 	platform, err := platforms.FromConfig(conf, job.PlatformConfig)
@@ -186,7 +179,7 @@ func executeJob(conf *schema.TediumConfig, executor schema.Executor, job schema.
 		return
 	}
 
-	err = executors.PrepareJob(platform, &job)
+	err = executors.PrepareJob(platform, job)
 	if err != nil {
 		l.Error("Failed to prepare job - aborting this chore", "error", err, "repo", job.Repo.FullName(), "chore", job.Chore.Name)
 		runStats.JobsFailed++
@@ -194,7 +187,7 @@ func executeJob(conf *schema.TediumConfig, executor schema.Executor, job schema.
 	}
 
 	l.Info("Executing chore", "repo", job.Repo.FullName(), "chore", job.Chore.Name)
-	err = executor.ExecuteChore(&job)
+	err = executor.ExecuteChore(job)
 	if err != nil {
 		l.Error("Error executing chore - aborting this chore", "error", err, "repo", job.Repo.FullName(), "chore", job.Chore.Name)
 		runStats.JobsFailed++

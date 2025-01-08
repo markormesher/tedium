@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo) (*schema.ResolvedRepoConfig, error) {
+func resolveRepoConfig(conf schema.TediumConfig, targetRepo schema.Repo) (schema.ResolvedRepoConfig, error) {
 
 	// we start from a nil config, merge the root config, then merge every "extends" config on top
 	// TODO: this is backwards - we need to merge the extends first, then merge/apply overrides
@@ -33,12 +33,12 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo) (*sch
 
 		configRepo, err := schema.RepoFromUrl(*configUrl)
 		if err != nil {
-			return nil, fmt.Errorf("error constructing config repo before reading its config: %w", err)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("error constructing config repo before reading its config: %w", err)
 		}
 
 		platform := platforms.FromDomain(configRepo.Domain)
 		if platform == nil {
-			return nil, fmt.Errorf("failed to determine a platform to read repo config (domain: %s)", configRepo.Domain)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to determine a platform to read repo config (domain: %s)", configRepo.Domain)
 		}
 
 		var fileName string
@@ -51,10 +51,10 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo) (*sch
 		var repoConfigRaw []byte
 		repoConfigRaw, err = platform.ReadRepoFile(configRepo, "", utils.AddYamlJsonExtensions(fileName))
 		if err != nil {
-			return nil, fmt.Errorf("failed to read config file out of repo: %w", err)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to read config file out of repo: %w", err)
 		}
 		if repoConfigRaw == nil {
-			return nil, fmt.Errorf("failed to read config file out of repo: no file exists")
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to read config file out of repo: no file exists")
 		}
 
 		var repoConfig *schema.RepoConfig
@@ -62,7 +62,7 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo) (*sch
 		decoder.KnownFields(true)
 		err = decoder.Decode(&repoConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal repo config file: %w", err)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to unmarshal repo config file: %w", err)
 		}
 
 		for _, extendsUrl := range repoConfig.Extends {
@@ -76,40 +76,39 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo) (*sch
 
 		mergedConfig, err = mergeRepoConfigs(mergedConfig, repoConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed to merge using upstream config from %s: %w", *configUrl, err)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to merge using upstream config from %s: %w", *configUrl, err)
 		}
 
 		visitingTargetRepo = false
 	}
 
 	// for every chore in the merged config, resolve it into the actual chore spec
-	resolvedConfig := &schema.ResolvedRepoConfig{
+	resolvedConfig := schema.ResolvedRepoConfig{
 		// TODO: copy over other parts of repo config besides chores
-		Chores: make([]*schema.ChoreSpec, len(mergedConfig.Chores)),
+		Chores: make([]schema.ChoreSpec, len(mergedConfig.Chores)),
 	}
-	for choreIdx := range mergedConfig.Chores {
-		sourceChore := &mergedConfig.Chores[choreIdx]
+	for souceChoreIdx, sourceChore := range mergedConfig.Chores {
 		choreRepoUrl := sourceChore.Url
 		choreBranch := sourceChore.Branch
 		choreDirectory := sourceChore.Directory
 
 		choreRepo, err := schema.RepoFromUrl(choreRepoUrl)
 		if err != nil {
-			return nil, fmt.Errorf("error constructing chore repo before reading its config: %w", err)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("error constructing chore repo before reading its config: %w", err)
 		}
 
 		platform := platforms.FromDomain(choreRepo.Domain)
 		if platform == nil {
-			return nil, fmt.Errorf("failed to determine a platform to read chore config (domain: %s)", choreRepo.Domain)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to determine a platform to read chore config (domain: %s)", choreRepo.Domain)
 		}
 
 		var choreSpecRaw []byte
 		choreSpecRaw, err = platform.ReadRepoFile(choreRepo, choreBranch, utils.AddYamlJsonExtensions(fmt.Sprintf("%s/chore", choreDirectory)))
 		if err != nil {
-			return nil, fmt.Errorf("failed to read chore file out of repo: %w", err)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to read chore file out of repo: %w", err)
 		}
 		if choreSpecRaw == nil {
-			return nil, fmt.Errorf("failed to read chore file out of repo: no file exists")
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to read chore file out of repo: no file exists")
 		}
 
 		var choreSpec schema.ChoreSpec
@@ -117,12 +116,12 @@ func resolveRepoConfig(conf *schema.TediumConfig, targetRepo *schema.Repo) (*sch
 		decoder.KnownFields(true)
 		err = decoder.Decode(&choreSpec)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal chore config file: %w", err)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to unmarshal chore config file: %w", err)
 		}
 
 		choreSpec.SourceConfig = sourceChore
 
-		resolvedConfig.Chores[choreIdx] = &choreSpec
+		resolvedConfig.Chores[souceChoreIdx] = choreSpec
 	}
 
 	return resolvedConfig, nil

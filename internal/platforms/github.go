@@ -18,12 +18,12 @@ type GitHubPlatform struct {
 
 	// generated locally
 	apiBaseUrl string
-	profile    *schema.PlatformProfile
+	profile    schema.PlatformProfile
 }
 
-func githubPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (*GitHubPlatform, error) {
+func githubPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) (*GitHubPlatform, error) {
 	return &GitHubPlatform{
-		PlatformConfig: *platformConfig,
+		PlatformConfig: platformConfig,
 
 		domain:     platformConfig.Domain,
 		auth:       platformConfig.Auth,
@@ -33,7 +33,7 @@ func githubPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.
 
 // interface methods
 
-func (p *GitHubPlatform) Init(conf *schema.TediumConfig) error {
+func (p *GitHubPlatform) Init(conf schema.TediumConfig) error {
 	err := p.loadProfile(conf)
 	if err != nil {
 		return err
@@ -58,7 +58,7 @@ func (p *GitHubPlatform) AcceptsDomain(domain string) bool {
 	return domain == p.domain
 }
 
-func (p *GitHubPlatform) Profile() *schema.PlatformProfile {
+func (p *GitHubPlatform) Profile() schema.PlatformProfile {
 	return p.profile
 }
 
@@ -185,7 +185,7 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	}
 }
 
-func (p *GitHubPlatform) RepoHasTediumConfig(repo *schema.Repo) (bool, error) {
+func (p *GitHubPlatform) RepoHasTediumConfig(repo schema.Repo) (bool, error) {
 	file, err := p.ReadRepoFile(repo, "", utils.AddYamlJsonExtensions(".tedium"))
 
 	if err != nil {
@@ -195,7 +195,7 @@ func (p *GitHubPlatform) RepoHasTediumConfig(repo *schema.Repo) (bool, error) {
 	return file != nil, nil
 }
 
-func (p *GitHubPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCandidates []string) ([]byte, error) {
+func (p *GitHubPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandidates []string) ([]byte, error) {
 	var repoFile struct {
 		Content string `json:"content"`
 	}
@@ -233,7 +233,7 @@ func (p *GitHubPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCand
 	return nil, nil
 }
 
-func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
+func (p *GitHubPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 	l.Info("Opening or updating PR", "chore", job.Chore.Name)
 
 	var existingPrs []struct {
@@ -307,7 +307,7 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 // internal methods
 
-func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
+func (p *GitHubPlatform) loadProfile(conf schema.TediumConfig) error {
 	if p.auth == nil || p.SkipDiscovery {
 		return nil
 	}
@@ -346,7 +346,7 @@ func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
 			return fmt.Errorf("Failed to load user profile: no primary email addresses")
 		}
 
-		p.profile = &schema.PlatformProfile{
+		p.profile = schema.PlatformProfile{
 			Email: primaryEmail,
 		}
 
@@ -372,7 +372,7 @@ func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
 			return fmt.Errorf("Failed to load app profile: %v", response.Status())
 		}
 
-		p.profile = &schema.PlatformProfile{
+		p.profile = schema.PlatformProfile{
 			Email: appProfile.Slug + "[bot]@users.noreply.github.com",
 		}
 

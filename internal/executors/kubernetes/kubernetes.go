@@ -28,12 +28,12 @@ type KubernetesExecutor struct {
 	Namespace      string
 
 	// private state
-	conf      *schema.TediumConfig
+	conf      schema.TediumConfig
 	clientSet *k8s.Clientset
 	podClient corev1.PodInterface
 }
 
-func FromConfig(c *schema.KubernetesExecutorConfig) (*KubernetesExecutor, error) {
+func FromConfig(c schema.KubernetesExecutorConfig) (*KubernetesExecutor, error) {
 	namespace := c.Namespace
 	if namespace == "" {
 		l.Warn("Kubernetes executor namespace was blank - using 'default'")
@@ -46,7 +46,7 @@ func FromConfig(c *schema.KubernetesExecutorConfig) (*KubernetesExecutor, error)
 	}, nil
 }
 
-func (executor *KubernetesExecutor) Init(conf *schema.TediumConfig) error {
+func (executor *KubernetesExecutor) Init(conf schema.TediumConfig) error {
 	executor.conf = conf
 
 	var kubeConfig *rest.Config
@@ -76,7 +76,7 @@ func (executor *KubernetesExecutor) Init(conf *schema.TediumConfig) error {
 	return nil
 }
 
-func (executor *KubernetesExecutor) ExecuteChore(job *schema.Job) error {
+func (executor *KubernetesExecutor) ExecuteChore(job schema.Job) error {
 	totalSteps := len(job.Chore.Steps)
 
 	// annoying hack so we can pass an *int64 below
@@ -104,8 +104,7 @@ func (executor *KubernetesExecutor) ExecuteChore(job *schema.Job) error {
 		},
 	}
 
-	for i := range job.ExecutionSteps {
-		step := job.ExecutionSteps[i]
+	for i, step := range job.ExecutionSteps {
 		pod.Spec.Containers[i] = v1.Container{
 			Name:            step.Label,
 			Image:           executor.conf.Images.Pause,
@@ -137,8 +136,7 @@ func (executor *KubernetesExecutor) ExecuteChore(job *schema.Job) error {
 	}()
 
 	// run actual steps by swapping the image on each container within the pod
-	for i := range job.ExecutionSteps {
-		step := job.ExecutionSteps[i]
+	for i, step := range job.ExecutionSteps {
 		patch := schema.JsonPatch{
 			schema.JsonPatchOperation{
 				Operation: "replace",

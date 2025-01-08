@@ -57,7 +57,7 @@ func (p *PodmanExecutor) printContainerLogs(name string) error {
 	go func() {
 		for str := range logPrinter {
 			str = strings.TrimSpace(str)
-			if len(str) > 0 {
+			if str != "" {
 				fmt.Println(str)
 			}
 		}

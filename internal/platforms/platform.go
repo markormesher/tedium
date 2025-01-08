@@ -12,20 +12,20 @@ var l = logging.Logger
 var platformCache []Platform
 
 type Platform interface {
-	Init(conf *schema.TediumConfig) error
+	Init(conf schema.TediumConfig) error
 	Deinit() error
 	Config() schema.PlatformConfig
 	ApiBaseUrl() string
 
 	AcceptsDomain(string) bool
 
-	Profile() *schema.PlatformProfile
+	Profile() schema.PlatformProfile
 	AuthToken() string
 
 	DiscoverRepos() ([]schema.Repo, error)
-	RepoHasTediumConfig(repo *schema.Repo) (bool, error)
-	ReadRepoFile(repo *schema.Repo, branch string, pathCandidates []string) ([]byte, error)
-	OpenOrUpdatePullRequest(job *schema.Job) error
+	RepoHasTediumConfig(repo schema.Repo) (bool, error)
+	ReadRepoFile(repo schema.Repo, branch string, pathCandidates []string) ([]byte, error)
+	OpenOrUpdatePullRequest(job schema.Job) error
 }
 
 func FromDomain(domain string) Platform {
@@ -38,7 +38,7 @@ func FromDomain(domain string) Platform {
 	return nil
 }
 
-func FromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (Platform, error) {
+func FromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) (Platform, error) {
 	var platform Platform
 
 	// try the cache first

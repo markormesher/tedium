@@ -87,14 +87,13 @@ func (ac *AuthConfig) GenerateJwt() (string, error) {
 	return signedToken, nil
 }
 
-func (pc PlatformConfig) AcceptsRepo(fullName string) bool {
+func (pc *PlatformConfig) AcceptsRepo(fullName string) bool {
 	if pc.RepoFilters == nil {
 		return true
 	}
 
-	for i := range pc.RepoFilters {
-		// loop by index to avoid copying the regexp object
-		if pc.RepoFilters[i].MatchString(fullName) {
+	for _, filter := range pc.RepoFilters {
+		if filter.MatchString(fullName) {
 			return true
 		}
 	}

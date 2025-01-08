@@ -29,8 +29,8 @@ type KubernetesExecutorConfig struct {
 }
 
 type Executor interface {
-	Init(conf *TediumConfig) error
-	ExecuteChore(job *Job) error
+	Init(conf TediumConfig) error
+	ExecuteChore(job Job) error
 }
 
 // ExecutionStep decouples the definition of a ChoreStep from the actual execution.
@@ -44,11 +44,11 @@ type ExecutionStep struct {
 
 // Job represents an item of work to be done: a specific chore on a specific repo. It should be self-contained; i.e. carry all the info needed to perform a job.
 type Job struct {
-	Config          *TediumConfig
-	Repo            *Repo
-	Chore           *ChoreSpec
+	Config          TediumConfig
+	Repo            Repo
+	Chore           ChoreSpec
 	ExecutionSteps  []ExecutionStep
-	PlatformConfig  *PlatformConfig
+	PlatformConfig  PlatformConfig
 	WorkBranchName  string
 	FinalBranchName string
 }
@@ -65,7 +65,7 @@ func (job *Job) ToEnvironment() (map[string]string, error) {
 	}, nil
 }
 
-func JobFromEnvironment() (*Job, error) {
+func JobFromEnvironment() (Job, error) {
 	jobStr := os.Getenv("TEDIUM_JOB")
 
 	var job Job
@@ -73,8 +73,8 @@ func JobFromEnvironment() (*Job, error) {
 	decoder.DisallowUnknownFields()
 	err := decoder.Decode(&job)
 	if err != nil {
-		return nil, fmt.Errorf("Error decoding job: %w", err)
+		return Job{}, fmt.Errorf("Error decoding job: %w", err)
 	}
 
-	return &job, nil
+	return job, nil
 }

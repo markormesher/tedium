@@ -18,16 +18,16 @@ type GiteaPlatform struct {
 
 	// generated locally
 	apiBaseUrl string
-	profile    *schema.PlatformProfile
+	profile    schema.PlatformProfile
 }
 
-func giteaPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (*GiteaPlatform, error) {
+func giteaPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) (*GiteaPlatform, error) {
 	if platformConfig.Auth != nil && platformConfig.Auth.Type != schema.AuthConfigTypeUserToken {
 		return nil, fmt.Errorf("Cannot construct Gitea platform with auth type other than user token (domain: %s)", platformConfig.Domain)
 	}
 
 	return &GiteaPlatform{
-		PlatformConfig: *platformConfig,
+		PlatformConfig: platformConfig,
 
 		domain:     platformConfig.Domain,
 		auth:       platformConfig.Auth,
@@ -37,7 +37,7 @@ func giteaPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.P
 
 // interface methods
 
-func (p *GiteaPlatform) Init(conf *schema.TediumConfig) error {
+func (p *GiteaPlatform) Init(conf schema.TediumConfig) error {
 	err := p.loadProfile(conf)
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func (p *GiteaPlatform) AcceptsDomain(domain string) bool {
 	return domain == p.domain
 }
 
-func (p *GiteaPlatform) Profile() *schema.PlatformProfile {
+func (p *GiteaPlatform) Profile() schema.PlatformProfile {
 	return p.profile
 }
 
@@ -129,7 +129,7 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	return output, nil
 }
 
-func (p *GiteaPlatform) RepoHasTediumConfig(repo *schema.Repo) (bool, error) {
+func (p *GiteaPlatform) RepoHasTediumConfig(repo schema.Repo) (bool, error) {
 	file, err := p.ReadRepoFile(repo, "", utils.AddYamlJsonExtensions(".tedium"))
 
 	if err != nil {
@@ -139,7 +139,7 @@ func (p *GiteaPlatform) RepoHasTediumConfig(repo *schema.Repo) (bool, error) {
 	return file != nil, nil
 }
 
-func (p *GiteaPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCandidates []string) ([]byte, error) {
+func (p *GiteaPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandidates []string) ([]byte, error) {
 	var repoFile struct {
 		Content string `json:"content"`
 	}
@@ -174,7 +174,7 @@ func (p *GiteaPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCandi
 	return nil, nil
 }
 
-func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
+func (p *GiteaPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 	l.Info("Opening or updating PR", "chore", job.Chore.Name)
 
 	var existingPrs []struct {
@@ -241,7 +241,7 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 // internal methods
 
-func (p *GiteaPlatform) loadProfile(conf *schema.TediumConfig) error {
+func (p *GiteaPlatform) loadProfile(conf schema.TediumConfig) error {
 	if p.auth == nil || p.SkipDiscovery {
 		return nil
 	}
@@ -262,7 +262,7 @@ func (p *GiteaPlatform) loadProfile(conf *schema.TediumConfig) error {
 		return fmt.Errorf("Failed to load user profile, status: %v", response.Status())
 	}
 
-	p.profile = &schema.PlatformProfile{
+	p.profile = schema.PlatformProfile{
 		Email: user.Email,
 	}
 
