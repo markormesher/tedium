@@ -77,8 +77,6 @@ func (executor *KubernetesExecutor) Init(conf schema.TediumConfig) error {
 }
 
 func (executor *KubernetesExecutor) ExecuteChore(job schema.Job) error {
-	totalSteps := len(job.Chore.Steps)
-
 	// annoying hack so we can pass an *int64 below
 	zero := int64(0)
 
@@ -91,7 +89,7 @@ func (executor *KubernetesExecutor) ExecuteChore(job schema.Job) error {
 		},
 		Spec: v1.PodSpec{
 			RestartPolicy:                 "Never",
-			Containers:                    make([]v1.Container, totalSteps),
+			Containers:                    make([]v1.Container, len(job.ExecutionSteps)),
 			TerminationGracePeriodSeconds: &zero,
 			Volumes: []v1.Volume{
 				{

@@ -25,14 +25,14 @@ func FromExecutorConfig(ec schema.ExecutorConfig) (schema.Executor, error) {
 	return nil, fmt.Errorf("no executor specified")
 }
 
-func PrepareJob(platform platforms.Platform, job schema.Job) error {
+func PrepareJob(platform platforms.Platform, job schema.Job) (schema.Job, error) {
 	tediumImage := job.Config.Images.Tedium
 
 	// add our own steps to the chore (editing in place)
 
 	jobEnvBundle, err := job.ToEnvironment()
 	if err != nil {
-		return fmt.Errorf("error generating job environment variable: %w", err)
+		return schema.Job{}, fmt.Errorf("error generating job environment variable: %w", err)
 	}
 
 	if !job.Chore.SkipCloneStep {
@@ -67,7 +67,7 @@ func PrepareJob(platform platforms.Platform, job schema.Job) error {
 		}
 	}
 
-	return nil
+	return job, nil
 }
 
 func envForStep(platform platforms.Platform, job schema.Job, step schema.ChoreStep) map[string]string {

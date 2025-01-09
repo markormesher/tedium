@@ -11,7 +11,6 @@ import (
 )
 
 func resolveRepoConfig(conf schema.TediumConfig, targetRepo schema.Repo) (schema.ResolvedRepoConfig, error) {
-
 	// we start from a nil config, merge the root config, then merge every "extends" config on top
 	// TODO: this is backwards - we need to merge the extends first, then merge/apply overrides
 	var mergedConfig *schema.RepoConfig
@@ -53,7 +52,7 @@ func resolveRepoConfig(conf schema.TediumConfig, targetRepo schema.Repo) (schema
 		if err != nil {
 			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to read config file out of repo: %w", err)
 		}
-		if repoConfigRaw == nil {
+		if len(repoConfigRaw) == 0 {
 			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to read config file out of repo: no file exists")
 		}
 
