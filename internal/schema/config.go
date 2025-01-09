@@ -8,12 +8,9 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/utils"
 	"gopkg.in/yaml.v3"
 )
-
-var l = logging.Logger
 
 // TediumConfig is passed to the Tedium executable to control its behaviour.
 type TediumConfig struct {
@@ -124,7 +121,7 @@ func LoadTediumConfig(configFilePath string) (TediumConfig, error) {
 
 func (conf *TediumConfig) CompileRepoFilters() error {
 	for _, p := range conf.Platforms {
-		if p.RepoFiltersRaw == nil || len(p.RepoFiltersRaw) == 0 {
+		if len(p.RepoFiltersRaw) == 0 {
 			p.RepoFilters = nil
 			continue
 		}

@@ -54,7 +54,7 @@ func Run(conf schema.TediumConfig) {
 
 	// gather jobs and feed them to the queue
 	l.Info("Starting to gather chores")
-	gatherJobs(conf, *&jobQueue)
+	gatherJobs(conf, jobQueue)
 	close(jobQueue)
 	l.Info("Finished gathering chores")
 
