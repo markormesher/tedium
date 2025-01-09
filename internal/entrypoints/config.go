@@ -131,7 +131,7 @@ func mergeRepoConfigs(a, b *schema.RepoConfig) (*schema.RepoConfig, error) {
 	// deal with any nil configs up-front - after this we know references are safe
 	switch {
 	case a == nil && b == nil:
-		return nil, fmt.Errorf("Cannot merge two nil configs")
+		return nil, fmt.Errorf("cannot merge two nil configs")
 	case a == nil:
 		return b, nil
 	case b == nil:

@@ -57,7 +57,7 @@ type Job struct {
 func (job *Job) ToEnvironment() (map[string]string, error) {
 	jobStrBytes, err := json.Marshal(job)
 	if err != nil {
-		return nil, fmt.Errorf("Error marshalling Tedium config into environment variable: %w", err)
+		return nil, fmt.Errorf("error marshalling Tedium config into environment variable: %w", err)
 	}
 
 	return map[string]string{
@@ -73,7 +73,7 @@ func JobFromEnvironment() (Job, error) {
 	decoder.DisallowUnknownFields()
 	err := decoder.Decode(&job)
 	if err != nil {
-		return Job{}, fmt.Errorf("Error decoding job: %w", err)
+		return Job{}, fmt.Errorf("error decoding job: %w", err)
 	}
 
 	return job, nil

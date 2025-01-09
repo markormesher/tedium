@@ -23,7 +23,7 @@ type GiteaPlatform struct {
 
 func giteaPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) (*GiteaPlatform, error) {
 	if platformConfig.Auth != nil && platformConfig.Auth.Type != schema.AuthConfigTypeUserToken {
-		return nil, fmt.Errorf("Cannot construct Gitea platform with auth type other than user token (domain: %s)", platformConfig.Domain)
+		return nil, fmt.Errorf("cannot construct Gitea platform with auth type other than user token (domain: %s)", platformConfig.Domain)
 	}
 
 	return &GiteaPlatform{
@@ -101,11 +101,11 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	response, err := req.Get(fmt.Sprintf("%s/repos/search", p.apiBaseUrl))
 
 	if err != nil {
-		return nil, fmt.Errorf("Error making Gitea API request: %v", err)
+		return nil, fmt.Errorf("error making Gitea API request: %v", err)
 	}
 
 	if response.IsError() {
-		return nil, fmt.Errorf("Error making Gitea API request, status: %v", response.Status())
+		return nil, fmt.Errorf("error making Gitea API request, status: %v", response.Status())
 	}
 
 	var output []schema.Repo
@@ -133,7 +133,7 @@ func (p *GiteaPlatform) RepoHasTediumConfig(repo schema.Repo) (bool, error) {
 	file, err := p.ReadRepoFile(repo, "", utils.AddYamlJsonExtensions(".tedium"))
 
 	if err != nil {
-		return false, fmt.Errorf("Failed to read Tedium file via Gitea API: %w", err)
+		return false, fmt.Errorf("failed to read Tedium file via Gitea API: %w", err)
 	}
 
 	return file != nil, nil
@@ -154,7 +154,7 @@ func (p *GiteaPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandid
 		req.SetResult(&repoFile)
 		response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.apiBaseUrl, repo.OwnerName, repo.Name, path))
 		if err != nil {
-			return nil, fmt.Errorf("Failed to read file via Gitea API: %w", err)
+			return nil, fmt.Errorf("failed to read file via Gitea API: %w", err)
 		}
 
 		if response.StatusCode() == 404 {
@@ -164,7 +164,7 @@ func (p *GiteaPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandid
 
 		fileStr, err := base64.StdEncoding.DecodeString(repoFile.Content)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to decode base64 string: %w", err)
+			return nil, fmt.Errorf("failed to decode base64 string: %w", err)
 		}
 
 		return fileStr, nil
@@ -194,11 +194,11 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 	req.SetResult(&existingPrs)
 	response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/pulls", p.apiBaseUrl, job.Repo.OwnerName, job.Repo.Name))
 	if err != nil {
-		return fmt.Errorf("Error fetching existing PRs: %w", err)
+		return fmt.Errorf("error fetching existing PRs: %w", err)
 	}
 
 	if !response.IsSuccess() {
-		return fmt.Errorf("Error fetching existing PRs: %v", string(response.Body()))
+		return fmt.Errorf("error fetching existing PRs: %v", string(response.Body()))
 	}
 
 	var existingPrNum int
@@ -229,11 +229,11 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 	}
 
 	if err != nil {
-		return fmt.Errorf("Error opening or updating PR: %w", err)
+		return fmt.Errorf("error opening or updating PR: %w", err)
 	}
 
 	if !response.IsSuccess() {
-		return fmt.Errorf("Error opening or updating PR: %v", string(response.Body()))
+		return fmt.Errorf("error opening or updating PR: %v", string(response.Body()))
 	}
 
 	return nil
@@ -255,11 +255,11 @@ func (p *GiteaPlatform) loadProfile(conf schema.TediumConfig) error {
 	response, err := req.Get(fmt.Sprintf("%s/user", p.apiBaseUrl))
 
 	if err != nil {
-		return fmt.Errorf("Failed to load user profile: %v", err)
+		return fmt.Errorf("failed to load user profile: %v", err)
 	}
 
 	if response.IsError() {
-		return fmt.Errorf("Failed to load user profile, status: %v", response.Status())
+		return fmt.Errorf("failed to load user profile, status: %v", response.Status())
 	}
 
 	p.profile = schema.PlatformProfile{

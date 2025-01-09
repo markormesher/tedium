@@ -52,7 +52,7 @@ func (executor *KubernetesExecutor) waitForContainerCompletion(podName string, c
 func (executor *KubernetesExecutor) printContainerLogs(podName string, containerIdx int) error {
 	pod, err := executor.podClient.Get(k8sExecutorContext, podName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("Failed to get pod to print logs: %w", err)
+		return fmt.Errorf("failed to get pod to print logs: %w", err)
 	}
 
 	logReq := executor.podClient.GetLogs(podName, &v1.PodLogOptions{
@@ -61,18 +61,18 @@ func (executor *KubernetesExecutor) printContainerLogs(podName string, container
 
 	err = logReq.Error()
 	if err != nil {
-		return fmt.Errorf("Failed to request container logs: %w", err)
+		return fmt.Errorf("failed to request container logs: %w", err)
 	}
 
 	stream, err := logReq.Stream(k8sExecutorContext)
 	if err != nil {
-		return fmt.Errorf("Failed opening stream for container logs: %w", err)
+		return fmt.Errorf("failed opening stream for container logs: %w", err)
 	}
 
 	defer stream.Close()
 	_, err = io.Copy(os.Stdout, stream)
 	if err != nil {
-		return fmt.Errorf("Failed to stream container logs: %w", err)
+		return fmt.Errorf("failed to stream container logs: %w", err)
 	} else {
 		return nil
 	}

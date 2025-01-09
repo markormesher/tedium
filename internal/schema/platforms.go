@@ -45,11 +45,11 @@ type AuthConfig struct {
 
 func (ac *AuthConfig) GenerateJwt() (string, error) {
 	if ac.ClientId == "" {
-		return "", fmt.Errorf("Error generating JWT: client ID is missing")
+		return "", fmt.Errorf("error generating JWT: client ID is missing")
 	}
 
 	if ac.PrivateKeyFile == "" && ac.PrivateKeyString == "" {
-		return "", fmt.Errorf("Error generating JWT: private key is missing")
+		return "", fmt.Errorf("error generating JWT: private key is missing")
 	}
 
 	var privateKeyBytes []byte
@@ -59,7 +59,7 @@ func (ac *AuthConfig) GenerateJwt() (string, error) {
 	} else {
 		privateKeyBytes, err = os.ReadFile(ac.PrivateKeyFile)
 		if err != nil {
-			return "", fmt.Errorf("Error reading private key: %w", err)
+			return "", fmt.Errorf("error reading private key: %w", err)
 		}
 
 		// persiste as a string so it can be passed between containers
@@ -68,7 +68,7 @@ func (ac *AuthConfig) GenerateJwt() (string, error) {
 
 	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(privateKeyBytes)
 	if err != nil {
-		return "", fmt.Errorf("Error parsing private key: %w", err)
+		return "", fmt.Errorf("error parsing private key: %w", err)
 	}
 
 	now := time.Now().Unix()
@@ -81,7 +81,7 @@ func (ac *AuthConfig) GenerateJwt() (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	signedToken, err := token.SignedString(privateKey)
 	if err != nil {
-		return "", fmt.Errorf("Error signing JWT: %w", err)
+		return "", fmt.Errorf("error signing JWT: %w", err)
 	}
 
 	return signedToken, nil

@@ -22,7 +22,7 @@ func FromExecutorConfig(ec schema.ExecutorConfig) (schema.Executor, error) {
 		return kubernetes.FromConfig(*ec.Kubernetes)
 	}
 
-	return nil, fmt.Errorf("No executor specified")
+	return nil, fmt.Errorf("no executor specified")
 }
 
 func PrepareJob(platform platforms.Platform, job schema.Job) error {

@@ -55,14 +55,14 @@ func FromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) 
 	case "gitea":
 		p, err := giteaPlatformFromConfig(conf, platformConfig)
 		if err != nil {
-			return nil, fmt.Errorf("Error building Gitea platform: %w", err)
+			return nil, fmt.Errorf("error building Gitea platform: %w", err)
 		}
 		platform = p
 
 	case "github":
 		p, err := githubPlatformFromConfig(conf, platformConfig)
 		if err != nil {
-			return nil, fmt.Errorf("Error building GitHub platform: %w", err)
+			return nil, fmt.Errorf("error building GitHub platform: %w", err)
 		}
 		platform = p
 	}
@@ -72,5 +72,5 @@ func FromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) 
 		return platform, nil
 	}
 
-	return nil, fmt.Errorf("Unrecognised platform type: %s", platformConfig.Type)
+	return nil, fmt.Errorf("unrecognised platform type: %s", platformConfig.Type)
 }

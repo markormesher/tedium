@@ -17,7 +17,7 @@ var logPrinterLock sync.Mutex
 func (p *PodmanExecutor) pullImage(name string) error {
 	exists, err := images.Exists(p.conn, name, nil)
 	if err != nil {
-		return fmt.Errorf("Error checking whether image exists before pulling: %w", err)
+		return fmt.Errorf("error checking whether image exists before pulling: %w", err)
 	}
 
 	if exists {
@@ -28,7 +28,7 @@ func (p *PodmanExecutor) pullImage(name string) error {
 	l.Info("Pulling container image", "image", name)
 	_, err = images.Pull(p.conn, name, &images.PullOptions{Quiet: utils.BoolPtr(true)})
 	if err != nil {
-		return fmt.Errorf("Error pulling image: %w", err)
+		return fmt.Errorf("error pulling image: %w", err)
 	}
 
 	return nil
@@ -39,7 +39,7 @@ func (p *PodmanExecutor) waitForContainerCompletion(name string) (int, error) {
 		Condition: []define.ContainerStatus{define.ContainerStateStopped, define.ContainerStateExited},
 	})
 	if err != nil {
-		return -1, fmt.Errorf("Error waiting for container to stop: %w", err)
+		return -1, fmt.Errorf("error waiting for container to stop: %w", err)
 	}
 
 	return int(exitCode), nil

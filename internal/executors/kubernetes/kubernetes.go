@@ -55,19 +55,19 @@ func (executor *KubernetesExecutor) Init(conf schema.TediumConfig) error {
 	if executor.KubeconfigPath != "" {
 		kubeConfig, err = clientcmd.BuildConfigFromFlags("", executor.KubeconfigPath)
 		if err != nil {
-			return fmt.Errorf("Error creating Kube config from provided path: %w", err)
+			return fmt.Errorf("error creating Kube config from provided path: %w", err)
 		}
 	} else {
 		l.Info("No kubeconfig path provided - attempting to use in-cluster config")
 		kubeConfig, err = rest.InClusterConfig()
 		if err != nil {
-			return fmt.Errorf("Error creating Kube config in-cluster config: %w", err)
+			return fmt.Errorf("error creating Kube config in-cluster config: %w", err)
 		}
 	}
 
 	clientSet, err := k8s.NewForConfig(kubeConfig)
 	if err != nil {
-		return fmt.Errorf("Error creating new Kubernetes client: %w", err)
+		return fmt.Errorf("error creating new Kubernetes client: %w", err)
 	}
 
 	executor.clientSet = clientSet
@@ -125,7 +125,7 @@ func (executor *KubernetesExecutor) ExecuteChore(job schema.Job) error {
 	podsClient := executor.clientSet.CoreV1().Pods(executor.Namespace)
 	_, err := podsClient.Create(k8sExecutorContext, pod, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("Error creating execution pod: %w", err)
+		return fmt.Errorf("error creating execution pod: %w", err)
 	}
 
 	defer func() {
@@ -147,12 +147,12 @@ func (executor *KubernetesExecutor) ExecuteChore(job schema.Job) error {
 		patchBytes, err := json.Marshal(patch)
 		l.Info("Starting step", "step", i)
 		if err != nil {
-			return fmt.Errorf("Error marshalling JSON patch to set image: %w", err)
+			return fmt.Errorf("error marshalling JSON patch to set image: %w", err)
 		}
 
 		_, err = podsClient.Patch(k8sExecutorContext, pod.Name, types.JSONPatchType, patchBytes, metav1.PatchOptions{})
 		if err != nil {
-			return fmt.Errorf("Error patching pod to set image: %w", err)
+			return fmt.Errorf("error patching pod to set image: %w", err)
 		}
 
 		exitCode, err := executor.waitForContainerCompletion(podName, i)

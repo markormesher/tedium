@@ -52,7 +52,7 @@ func (p *PodmanExecutor) Init(conf schema.TediumConfig) error {
 
 	conn, err := bindings.NewConnection(context.Background(), p.SocketPath)
 	if err != nil {
-		return fmt.Errorf("Error creating Podman binding: %w", err)
+		return fmt.Errorf("error creating Podman binding: %w", err)
 	}
 	p.conn = conn
 
@@ -88,7 +88,7 @@ func (p *PodmanExecutor) ExecuteChore(job schema.Job) error {
 
 			createResponse, err := containers.CreateWithSpec(p.conn, spec, nil)
 			if err != nil {
-				return fmt.Errorf("Error creating container from spec: %w", err)
+				return fmt.Errorf("error creating container from spec: %w", err)
 			}
 
 			defer func() {
@@ -98,7 +98,7 @@ func (p *PodmanExecutor) ExecuteChore(job schema.Job) error {
 			l.Info("Starting container", "container", spec.Name)
 			err = containers.Start(p.conn, createResponse.ID, nil)
 			if err != nil {
-				return fmt.Errorf("Error starting container: %w", err)
+				return fmt.Errorf("error starting container: %w", err)
 			}
 
 			exitCode, err := p.waitForContainerCompletion(spec.Name)

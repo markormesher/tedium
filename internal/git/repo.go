@@ -26,7 +26,7 @@ func CloneRepo(job schema.Job, conf schema.TediumConfig) error {
 
 	err := os.MkdirAll(repoClonePath, os.ModePerm)
 	if err != nil {
-		return fmt.Errorf("Error creating repo storage: %v", err)
+		return fmt.Errorf("error creating repo storage: %v", err)
 	}
 
 	_, err = git.PlainClone(repoClonePath, false, &git.CloneOptions{
@@ -34,12 +34,12 @@ func CloneRepo(job schema.Job, conf schema.TediumConfig) error {
 		Auth: repo.Auth.ToTransportAuth(),
 	})
 	if err != nil {
-		return fmt.Errorf("Error cloning repo: %w", err)
+		return fmt.Errorf("error cloning repo: %w", err)
 	}
 
 	err = fetchAll(repo)
 	if err != nil {
-		return fmt.Errorf("Error running fetch: %w", err)
+		return fmt.Errorf("error running fetch: %w", err)
 	}
 
 	return nil
@@ -55,10 +55,10 @@ func CheckoutWorkBranch(job schema.Job) error {
 	// sanity check: the repo should be in a clean state
 	status, err := worktree.Status()
 	if err != nil {
-		return fmt.Errorf("Error checking repo status: %w", err)
+		return fmt.Errorf("error checking repo status: %w", err)
 	}
 	if !status.IsClean() {
-		return fmt.Errorf("Refusing to checkout a new branch on an unclean repo")
+		return fmt.Errorf("refusing to checkout a new branch on an unclean repo")
 	}
 
 	branchExists, err := branchExists(realRepo, job.WorkBranchName)
@@ -88,7 +88,7 @@ func CommitIfChanged(job schema.Job, profile schema.PlatformProfile) (bool, erro
 
 	repoStatus, err := worktree.Status()
 	if err != nil {
-		return false, fmt.Errorf("Error checking worktree status: %w", err)
+		return false, fmt.Errorf("error checking worktree status: %w", err)
 	}
 
 	if repoStatus.IsClean() {
@@ -99,7 +99,7 @@ func CommitIfChanged(job schema.Job, profile schema.PlatformProfile) (bool, erro
 
 	_, err = worktree.Add(".")
 	if err != nil {
-		return false, fmt.Errorf("Error adding changes: %w", err)
+		return false, fmt.Errorf("error adding changes: %w", err)
 	}
 
 	_, err = worktree.Commit(job.Chore.CommitMessage(), &git.CommitOptions{
@@ -110,7 +110,7 @@ func CommitIfChanged(job schema.Job, profile schema.PlatformProfile) (bool, erro
 		},
 	})
 	if err != nil {
-		return false, fmt.Errorf("Error committing changes: %w", err)
+		return false, fmt.Errorf("error committing changes: %w", err)
 	}
 
 	return true, nil
@@ -173,12 +173,12 @@ func PushWorkBranchToFinalBranch(job schema.Job) error {
 func openRepo() (*git.Repository, *git.Worktree, error) {
 	repo, err := git.PlainOpen(repoClonePath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error opening repo: %w", err)
+		return nil, nil, fmt.Errorf("error opening repo: %w", err)
 	}
 
 	worktree, err := repo.Worktree()
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error accessing repo work tree: %w", err)
+		return nil, nil, fmt.Errorf("error accessing repo work tree: %w", err)
 	}
 
 	return repo, worktree, nil
@@ -187,12 +187,12 @@ func openRepo() (*git.Repository, *git.Worktree, error) {
 func fetchAll(repo schema.Repo) error {
 	realRepo, _, err := openRepo()
 	if err != nil {
-		return fmt.Errorf("Error opening repo: %w", err)
+		return fmt.Errorf("error opening repo: %w", err)
 	}
 
 	origin, err := realRepo.Remote("origin")
 	if err != nil {
-		return fmt.Errorf("Error getting origin remote: %w", err)
+		return fmt.Errorf("error getting origin remote: %w", err)
 	}
 
 	err = origin.Fetch(&git.FetchOptions{
@@ -201,7 +201,7 @@ func fetchAll(repo schema.Repo) error {
 		Prune:    true,
 	})
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-		return fmt.Errorf("Error fetching repo refs: %w", err)
+		return fmt.Errorf("error fetching repo refs: %w", err)
 	}
 
 	return nil

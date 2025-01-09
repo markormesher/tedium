@@ -70,7 +70,7 @@ type ResolvedRepoConfig struct {
 func LoadTediumConfig(configFilePath string) (TediumConfig, error) {
 	configFileContent, err := os.ReadFile(configFilePath)
 	if err != nil {
-		return TediumConfig{}, fmt.Errorf("Error reading configuration file: %v", err)
+		return TediumConfig{}, fmt.Errorf("error reading configuration file: %v", err)
 	}
 
 	var conf TediumConfig
@@ -79,15 +79,15 @@ func LoadTediumConfig(configFilePath string) (TediumConfig, error) {
 		decoder.KnownFields(true)
 		err := decoder.Decode(&conf)
 		if err != nil {
-			return TediumConfig{}, fmt.Errorf("Error parsing configuration file: %v", err)
+			return TediumConfig{}, fmt.Errorf("error parsing configuration file: %v", err)
 		}
 	} else {
-		return TediumConfig{}, fmt.Errorf("Unacceptable file format: %s", configFilePath)
+		return TediumConfig{}, fmt.Errorf("unacceptable file format: %s", configFilePath)
 	}
 
 	err = conf.CompileRepoFilters()
 	if err != nil {
-		return TediumConfig{}, fmt.Errorf("Error compiling repo filters in configuration: %v", err)
+		return TediumConfig{}, fmt.Errorf("error compiling repo filters in configuration: %v", err)
 	}
 
 	// apply defaults
@@ -133,7 +133,7 @@ func (conf *TediumConfig) CompileRepoFilters() error {
 		for fi, f := range p.RepoFiltersRaw {
 			r, err := regexp.Compile(f)
 			if err != nil {
-				return fmt.Errorf("Error compiling repo filter regex: %w", err)
+				return fmt.Errorf("error compiling repo filter regex: %w", err)
 			}
 
 			p.RepoFilters[fi] = r
