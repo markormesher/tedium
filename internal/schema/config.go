@@ -107,7 +107,7 @@ func LoadTediumConfig(configFilePath string) (TediumConfig, error) {
 		return TediumConfig{}, fmt.Errorf("invalid Tedium config: more than one executor configured")
 	}
 
-	domainsSeen := make(map[string]bool)
+	domainsSeen := map[string]bool{}
 	for _, platform := range conf.Platforms {
 		domain := platform.Domain
 		if domainsSeen[domain] {

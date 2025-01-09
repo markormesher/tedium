@@ -17,7 +17,7 @@ func resolveRepoConfig(conf schema.TediumConfig, targetRepo schema.Repo) (schema
 	var mergedConfig *schema.RepoConfig
 
 	// frontier queue + visited set = non-looping depth-first search
-	urlsVisited := make(map[string]bool)
+	urlsVisited := map[string]bool{}
 	var urlsToVisit utils.Queue[string]
 	urlsToVisit.Push(targetRepo.CloneUrl)
 
@@ -139,7 +139,7 @@ func mergeRepoConfigs(a, b *schema.RepoConfig) (*schema.RepoConfig, error) {
 	}
 
 	// naive merge for now: just concat the chore lists and deliberately ignore the extends list
-	chores := make([]schema.RepoChoreConfig, 0)
+	chores := []schema.RepoChoreConfig{}
 	if a.Chores != nil {
 		chores = append(chores, a.Chores...)
 	}

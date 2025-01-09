@@ -71,7 +71,7 @@ func PrepareJob(platform platforms.Platform, job schema.Job) error {
 }
 
 func envForStep(platform platforms.Platform, job schema.Job, step schema.ChoreStep) map[string]string {
-	env := make(map[string]string)
+	env := map[string]string{}
 
 	// used by Tedium directly
 	env["TEDIUM_COMMAND"] = step.Command

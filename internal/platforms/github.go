@@ -82,7 +82,7 @@ func (p *GitHubPlatform) AuthToken() string {
 func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	if p.auth == nil {
 		l.Warn("No auth configured for paltform; skipping repo discovery", "domain", p.domain)
-		return make([]schema.Repo, 0), nil
+		return []schema.Repo{}, nil
 	}
 
 	switch p.auth.Type {
