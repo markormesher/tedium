@@ -29,7 +29,7 @@ func Sha256String(input string) string {
 	return hex.EncodeToString(hashSum)
 }
 
-var illegalBranchCharRegex = regexp.MustCompile("[^a-zA-Z0-9\\-]")
+var illegalBranchCharRegex = regexp.MustCompile(`[^a-zA-Z0-9\-]`)
 
 func ConvertToBranchName(value string) string {
 	value = strings.ReplaceAll(value, " ", "-")

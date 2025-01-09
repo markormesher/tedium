@@ -8,12 +8,9 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/utils"
 	"gopkg.in/yaml.v3"
 )
-
-var l = logging.Logger
 
 // TediumConfig is passed to the Tedium executable to control its behaviour.
 type TediumConfig struct {
@@ -62,15 +59,15 @@ type RepoChoreConfig struct {
 
 // ResolvedRepoConfig is the result of taking a target repo, following all "extends" links, and resolving all chore references into their actual spec.
 type ResolvedRepoConfig struct {
-	Chores []*ChoreSpec
+	Chores []ChoreSpec
 }
 
 // ---
 
-func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
+func LoadTediumConfig(configFilePath string) (TediumConfig, error) {
 	configFileContent, err := os.ReadFile(configFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading configuration file: %v", err)
+		return TediumConfig{}, fmt.Errorf("error reading configuration file: %v", err)
 	}
 
 	var conf TediumConfig
@@ -79,15 +76,15 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 		decoder.KnownFields(true)
 		err := decoder.Decode(&conf)
 		if err != nil {
-			return nil, fmt.Errorf("Error parsing configuration file: %v", err)
+			return TediumConfig{}, fmt.Errorf("error parsing configuration file: %v", err)
 		}
 	} else {
-		return nil, fmt.Errorf("Unacceptable file format: %s", configFilePath)
+		return TediumConfig{}, fmt.Errorf("unacceptable file format: %s", configFilePath)
 	}
 
 	err = conf.CompileRepoFilters()
 	if err != nil {
-		return nil, fmt.Errorf("Error compiling repo filters in configuration: %v", err)
+		return TediumConfig{}, fmt.Errorf("error compiling repo filters in configuration: %v", err)
 	}
 
 	// apply defaults
@@ -107,34 +104,33 @@ func LoadTediumConfig(configFilePath string) (*TediumConfig, error) {
 	// sanity checks
 
 	if conf.Executor.Podman != nil && conf.Executor.Kubernetes != nil {
-		return nil, fmt.Errorf("invalid Tedium config: more than one executor configured")
+		return TediumConfig{}, fmt.Errorf("invalid Tedium config: more than one executor configured")
 	}
 
-	domainsSeen := make(map[string]bool)
-	for platformIdx := range conf.Platforms {
-		domain := conf.Platforms[platformIdx].Domain
+	domainsSeen := map[string]bool{}
+	for _, platform := range conf.Platforms {
+		domain := platform.Domain
 		if domainsSeen[domain] {
-			return nil, fmt.Errorf("invalid Tedium config: duplicate platform domain %s", domain)
+			return TediumConfig{}, fmt.Errorf("invalid Tedium config: duplicate platform domain %s", domain)
 		}
 		domainsSeen[domain] = true
 	}
 
-	return &conf, nil
+	return conf, nil
 }
 
-func (conf TediumConfig) CompileRepoFilters() error {
-	for i := range conf.Platforms {
-		p := &conf.Platforms[i]
-		if p.RepoFiltersRaw == nil || len(p.RepoFiltersRaw) == 0 {
+func (conf *TediumConfig) CompileRepoFilters() error {
+	for _, p := range conf.Platforms {
+		if len(p.RepoFiltersRaw) == 0 {
 			p.RepoFilters = nil
 			continue
 		}
 
 		p.RepoFilters = make([]*regexp.Regexp, len(p.RepoFiltersRaw))
-		for fi, f := range conf.Platforms[i].RepoFiltersRaw {
+		for fi, f := range p.RepoFiltersRaw {
 			r, err := regexp.Compile(f)
 			if err != nil {
-				return fmt.Errorf("Error compiling repo filter regex: %w", err)
+				return fmt.Errorf("error compiling repo filter regex: %w", err)
 			}
 
 			p.RepoFilters[fi] = r

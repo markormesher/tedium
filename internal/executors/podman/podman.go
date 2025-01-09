@@ -19,44 +19,47 @@ type PodmanExecutor struct {
 	SocketPath string
 
 	// private state
-	conf *schema.TediumConfig
+	conf schema.TediumConfig
 	conn context.Context
 }
 
-func FromConfig(c *schema.PodmanExecutorConfig) (*PodmanExecutor, error) {
+func FromConfig(c schema.PodmanExecutorConfig) (*PodmanExecutor, error) {
 	return &PodmanExecutor{
 		SocketPath: c.SocketPath,
 	}, nil
 }
 
-func (p *PodmanExecutor) Init(conf *schema.TediumConfig) error {
+func (p *PodmanExecutor) Init(conf schema.TediumConfig) error {
 	p.conf = conf
 
 	if p.SocketPath == "" {
 		l.Info("No Podman socket provided - will attempt to use a default value")
-		user, err := user.Current()
-		if err != nil {
+		usr, err := user.Current()
+		switch {
+		case err != nil:
 			p.SocketPath = "unix:///run/podman/podman.sock"
 			l.Info("Error determining current user - using the root-owned socket", "socketPath", p.SocketPath)
-		} else if user.Uid == "0" {
+
+		case usr.Uid == "0":
 			p.SocketPath = "unix:///run/podman/podman.sock"
 			l.Info("User is root - using the root-owned socket", "socketPath", p.SocketPath)
-		} else {
-			p.SocketPath = fmt.Sprintf("unix:///run/user/%s/podman/podman.sock", user.Uid)
+
+		default:
+			p.SocketPath = fmt.Sprintf("unix:///run/user/%s/podman/podman.sock", usr.Uid)
 			l.Info("Using the user-owned socket", "socketPath", p.SocketPath)
 		}
 	}
 
 	conn, err := bindings.NewConnection(context.Background(), p.SocketPath)
 	if err != nil {
-		return fmt.Errorf("Error creating Podman binding: %w", err)
+		return fmt.Errorf("error creating Podman binding: %w", err)
 	}
 	p.conn = conn
 
 	return nil
 }
 
-func (p *PodmanExecutor) ExecuteChore(job *schema.Job) error {
+func (p *PodmanExecutor) ExecuteChore(job schema.Job) error {
 	// create a temporary volume to hold the target repo and defer its cleanup
 	repoVolume, err := p.createVolume("repo")
 	if err != nil {
@@ -69,47 +72,55 @@ func (p *PodmanExecutor) ExecuteChore(job *schema.Job) error {
 
 	// run each step in a new container
 	for _, step := range job.ExecutionSteps {
-		spec := specgen.NewSpecGenerator(step.Image, false)
-		spec.Name = utils.UniqueName(step.Label)
-		spec.Command = []string{"/bin/sh", "-c", "echo \"${TEDIUM_COMMAND}\" | /bin/sh"}
-		spec.Env = step.Environment
-		spec.Volumes = []*specgen.NamedVolume{
-			{
-				Name: repoVolume,
-				Dest: "/tedium/repo",
-			},
-		}
+		err := func() error {
+			spec := specgen.NewSpecGenerator(step.Image, false)
+			spec.Name = utils.UniqueName(step.Label)
+			spec.Command = []string{"/bin/sh", "-c", "echo \"${TEDIUM_COMMAND}\" | /bin/sh"}
+			spec.Env = step.Environment
+			spec.Volumes = []*specgen.NamedVolume{
+				{
+					Name: repoVolume,
+					Dest: "/tedium/repo",
+				},
+			}
 
-		p.pullImage(spec.Image)
+			p.pullImage(spec.Image)
 
-		createResponse, err := containers.CreateWithSpec(p.conn, spec, nil)
-		if err != nil {
-			return fmt.Errorf("Error creating container from spec: %w", err)
-		}
+			createResponse, err := containers.CreateWithSpec(p.conn, spec, nil)
+			if err != nil {
+				return fmt.Errorf("error creating container from spec: %w", err)
+			}
 
-		defer func() {
-			p.deleteContainerIfExists(spec.Name)
+			defer func() {
+				p.deleteContainerIfExists(spec.Name)
+			}()
+
+			l.Info("Starting container", "container", spec.Name)
+			err = containers.Start(p.conn, createResponse.ID, nil)
+			if err != nil {
+				return fmt.Errorf("error starting container: %w", err)
+			}
+
+			exitCode, err := p.waitForContainerCompletion(spec.Name)
+			if err != nil {
+				return fmt.Errorf("error waiting for container to complete: %w", err)
+			}
+			l.Info("container finished", "container", spec.Name, "exitCode", exitCode)
+
+			err = p.printContainerLogs(spec.Name)
+			if err != nil {
+				return fmt.Errorf("error printing container logs: %w", err)
+			}
+
+			if exitCode != 0 {
+				return fmt.Errorf("container finished with a non-zero exit code: %d", exitCode)
+			}
+
+			return nil
 		}()
 
-		l.Info("Starting container", "container", spec.Name)
-		err = containers.Start(p.conn, createResponse.ID, nil)
 		if err != nil {
-			return fmt.Errorf("Error starting container: %w", err)
-		}
-
-		exitCode, err := p.waitForContainerCompletion(spec.Name)
-		if err != nil {
-			return fmt.Errorf("error waiting for container to complete", err)
-		}
-		l.Info("container finished", "container", spec.Name, "exitCode", exitCode)
-
-		err = p.printContainerLogs(spec.Name)
-		if err != nil {
-			return fmt.Errorf("error printing container logs: %w", err)
-		}
-
-		if exitCode != 0 {
-			return fmt.Errorf("container finished with a non-zero exit code: %d", exitCode)
+			return err
 		}
 	}
 

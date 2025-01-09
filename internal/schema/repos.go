@@ -39,20 +39,20 @@ func (ra *RepoAuth) ToTransportAuth() transport.AuthMethod {
 	}
 }
 
-func RepoFromUrl(repoUrl string) (*Repo, error) {
+func RepoFromUrl(repoUrl string) (Repo, error) {
 	urlParsed, err := url.Parse(repoUrl)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing repo URL: %w", err)
+		return Repo{}, fmt.Errorf("error parsing repo URL: %w", err)
 	}
 
 	domain := urlParsed.Host
 	path := strings.Trim(urlParsed.Path, "/")
 	pathSegments := strings.Split(path, "/")
 	if len(pathSegments) != 2 {
-		return nil, fmt.Errorf("error parsing repo URL: path does not have two segments")
+		return Repo{}, fmt.Errorf("error parsing repo URL: path does not have two segments")
 	}
 
-	return &Repo{
+	return Repo{
 		Domain:    domain,
 		OwnerName: pathSegments[0],
 		Name:      strings.TrimSuffix(pathSegments[1], ".git"),

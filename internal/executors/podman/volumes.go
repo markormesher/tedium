@@ -15,7 +15,7 @@ func (p *PodmanExecutor) createVolume(role string) (string, error) {
 		Name: name,
 	}, nil)
 	if err != nil {
-		return "", fmt.Errorf("Error creating volume '%s': %w", name, err)
+		return "", fmt.Errorf("error creating volume '%s': %w", name, err)
 	}
 
 	return name, nil

@@ -14,7 +14,7 @@ type ChoreSpec struct {
 	SkipFinaliseStep bool `json:"skipFinaliseStep" yaml:"skipFinaliseStep"`
 
 	// SourceConfig contains the original user-specified config that was resolved into this chore.
-	SourceConfig *RepoChoreConfig `json:"internal_sourceConfig" yaml:"internal_sourceConfig"`
+	SourceConfig RepoChoreConfig `json:"internal_sourceConfig" yaml:"internal_sourceConfig"`
 }
 
 type ChoreStep struct {
@@ -41,7 +41,7 @@ func (choreSpec *ChoreSpec) PrTitle() string {
 }
 
 func (choreSpec *ChoreSpec) PrBody() string {
-	if len(choreSpec.Description) > 0 {
+	if choreSpec.Description != "" {
 		return choreSpec.Description
 	} else {
 		return "_No description provided by chore_"

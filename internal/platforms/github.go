@@ -18,12 +18,12 @@ type GitHubPlatform struct {
 
 	// generated locally
 	apiBaseUrl string
-	profile    *schema.PlatformProfile
+	profile    schema.PlatformProfile
 }
 
-func githubPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.PlatformConfig) (*GitHubPlatform, error) {
+func githubPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) (*GitHubPlatform, error) {
 	return &GitHubPlatform{
-		PlatformConfig: *platformConfig,
+		PlatformConfig: platformConfig,
 
 		domain:     platformConfig.Domain,
 		auth:       platformConfig.Auth,
@@ -33,7 +33,7 @@ func githubPlatformFromConfig(conf *schema.TediumConfig, platformConfig *schema.
 
 // interface methods
 
-func (p *GitHubPlatform) Init(conf *schema.TediumConfig) error {
+func (p *GitHubPlatform) Init(conf schema.TediumConfig) error {
 	err := p.loadProfile(conf)
 	if err != nil {
 		return err
@@ -58,7 +58,7 @@ func (p *GitHubPlatform) AcceptsDomain(domain string) bool {
 	return domain == p.domain
 }
 
-func (p *GitHubPlatform) Profile() *schema.PlatformProfile {
+func (p *GitHubPlatform) Profile() schema.PlatformProfile {
 	return p.profile
 }
 
@@ -82,7 +82,7 @@ func (p *GitHubPlatform) AuthToken() string {
 func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	if p.auth == nil {
 		l.Warn("No auth configured for paltform; skipping repo discovery", "domain", p.domain)
-		return make([]schema.Repo, 0), nil
+		return []schema.Repo{}, nil
 	}
 
 	switch p.auth.Type {
@@ -99,18 +99,18 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 
 		_, req, err := p.authedUserRequest()
 		if err != nil {
-			return nil, fmt.Errorf("Error making GitHub API request: %w", err)
+			return nil, fmt.Errorf("error making GitHub API request: %w", err)
 		}
 
 		req.SetResult(&repoData)
 		response, err := req.Get(fmt.Sprintf("%s/user/repos?per_page=100", p.apiBaseUrl))
 
 		if err != nil {
-			return nil, fmt.Errorf("Error making GitHub API request: %w", err)
+			return nil, fmt.Errorf("error making GitHub API request: %w", err)
 		}
 
 		if response.IsError() {
-			return nil, fmt.Errorf("Error making GitHub API request, status: %v", response.Status())
+			return nil, fmt.Errorf("error making GitHub API request, status: %v", response.Status())
 		}
 
 		var output []schema.Repo
@@ -147,18 +147,18 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 
 		_, req, err := p.authedInstallationRequest()
 		if err != nil {
-			return nil, fmt.Errorf("Error making GitHub API request: %w", err)
+			return nil, fmt.Errorf("error making GitHub API request: %w", err)
 		}
 
 		req.SetResult(&repoData)
 		response, err := req.Get(fmt.Sprintf("%s/installation/repositories?per_page=100", p.apiBaseUrl))
 
 		if err != nil {
-			return nil, fmt.Errorf("Error making GitHub API request: %w", err)
+			return nil, fmt.Errorf("error making GitHub API request: %w", err)
 		}
 
 		if response.IsError() {
-			return nil, fmt.Errorf("Error making GitHub API request, status: %v", response.Status())
+			return nil, fmt.Errorf("error making GitHub API request, status: %v", response.Status())
 		}
 
 		var output []schema.Repo
@@ -181,21 +181,21 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 		return output, nil
 
 	default:
-		return nil, fmt.Errorf("Unrecognised auth type: %s", p.auth.Type)
+		return nil, fmt.Errorf("unrecognised auth type: %s", p.auth.Type)
 	}
 }
 
-func (p *GitHubPlatform) RepoHasTediumConfig(repo *schema.Repo) (bool, error) {
+func (p *GitHubPlatform) RepoHasTediumConfig(repo schema.Repo) (bool, error) {
 	file, err := p.ReadRepoFile(repo, "", utils.AddYamlJsonExtensions(".tedium"))
 
 	if err != nil {
-		return false, fmt.Errorf("Failed to read Tedium file via GitHub API: %w", err)
+		return false, fmt.Errorf("failed to read Tedium file via GitHub API: %w", err)
 	}
 
 	return file != nil, nil
 }
 
-func (p *GitHubPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCandidates []string) ([]byte, error) {
+func (p *GitHubPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandidates []string) ([]byte, error) {
 	var repoFile struct {
 		Content string `json:"content"`
 	}
@@ -203,7 +203,7 @@ func (p *GitHubPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCand
 	for _, path := range pathCandidates {
 		_, req, err := p.authedUserOrInstallationRequest()
 		if err != nil {
-			return nil, fmt.Errorf("Failed to read file via GitHub API: %w", err)
+			return nil, fmt.Errorf("failed to read file via GitHub API: %w", err)
 		}
 
 		if branch != "" {
@@ -213,7 +213,7 @@ func (p *GitHubPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCand
 		req.SetResult(&repoFile)
 		response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.apiBaseUrl, repo.OwnerName, repo.Name, path))
 		if err != nil {
-			return nil, fmt.Errorf("Failed to read file via GitHub API: %w", err)
+			return nil, fmt.Errorf("failed to read file via GitHub API: %w", err)
 		}
 
 		if response.StatusCode() == 404 {
@@ -223,7 +223,7 @@ func (p *GitHubPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCand
 
 		fileBytes, err := base64.StdEncoding.DecodeString(repoFile.Content)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to decode base64 string: %w", err)
+			return nil, fmt.Errorf("failed to decode base64 string: %w", err)
 		}
 
 		return fileBytes, nil
@@ -233,7 +233,7 @@ func (p *GitHubPlatform) ReadRepoFile(repo *schema.Repo, branch string, pathCand
 	return nil, nil
 }
 
-func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
+func (p *GitHubPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 	l.Info("Opening or updating PR", "chore", job.Chore.Name)
 
 	var existingPrs []struct {
@@ -250,17 +250,17 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 	_, req, err := p.authedUserOrInstallationRequest()
 	if err != nil {
-		return fmt.Errorf("Error fetching existing PRs: %w", err)
+		return fmt.Errorf("error fetching existing PRs: %w", err)
 	}
 
 	req.SetResult(&existingPrs)
 	response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/pulls", p.apiBaseUrl, job.Repo.OwnerName, job.Repo.Name))
 	if err != nil {
-		return fmt.Errorf("Error fetching existing PRs: %w", err)
+		return fmt.Errorf("error fetching existing PRs: %w", err)
 	}
 
 	if !response.IsSuccess() {
-		return fmt.Errorf("Error fetching existing PRs: %v", string(response.Body()))
+		return fmt.Errorf("error fetching existing PRs: %v", string(response.Body()))
 	}
 
 	var existingPrNum int
@@ -280,7 +280,7 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 	_, req, err = p.authedUserOrInstallationRequest()
 	if err != nil {
-		return fmt.Errorf("Error fetching existing PRs: %w", err)
+		return fmt.Errorf("error fetching existing PRs: %w", err)
 	}
 
 	req.SetHeader("Content-type", "application/json")
@@ -295,11 +295,11 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 	}
 
 	if err != nil {
-		return fmt.Errorf("Error opening or updating PR: %w", err)
+		return fmt.Errorf("error opening or updating PR: %w", err)
 	}
 
 	if !response.IsSuccess() {
-		return fmt.Errorf("Error opening or updating PR: status %d", response.StatusCode())
+		return fmt.Errorf("error opening or updating PR: status %d", response.StatusCode())
 	}
 
 	return nil
@@ -307,7 +307,7 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job *schema.Job) error {
 
 // internal methods
 
-func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
+func (p *GitHubPlatform) loadProfile(conf schema.TediumConfig) error {
 	if p.auth == nil || p.SkipDiscovery {
 		return nil
 	}
@@ -321,17 +321,17 @@ func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
 
 		_, req, err := p.authedUserRequest()
 		if err != nil {
-			return fmt.Errorf("Error loading user profile: %w", err)
+			return fmt.Errorf("error loading user profile: %w", err)
 		}
 		req.SetResult(&userEmails)
 		response, err := req.Get(fmt.Sprintf("%s/user/emails", p.apiBaseUrl))
 
 		if err != nil {
-			return fmt.Errorf("Failed to load user profile: %w", err)
+			return fmt.Errorf("failed to load user profile: %w", err)
 		}
 
 		if response.IsError() {
-			return fmt.Errorf("Failed to load user profile: %v", response.Status())
+			return fmt.Errorf("failed to load user profile: %v", response.Status())
 		}
 
 		primaryEmail := ""
@@ -343,10 +343,10 @@ func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
 		}
 
 		if primaryEmail == "" {
-			return fmt.Errorf("Failed to load user profile: no primary email addresses")
+			return fmt.Errorf("failed to load user profile: no primary email addresses")
 		}
 
-		p.profile = &schema.PlatformProfile{
+		p.profile = schema.PlatformProfile{
 			Email: primaryEmail,
 		}
 
@@ -359,27 +359,27 @@ func (p *GitHubPlatform) loadProfile(conf *schema.TediumConfig) error {
 
 		_, req, err := p.authedAppRequest()
 		if err != nil {
-			return fmt.Errorf("Error loading app profile: %w", err)
+			return fmt.Errorf("error loading app profile: %w", err)
 		}
 		req.SetResult(&appProfile)
 		response, err := req.Get(fmt.Sprintf("%s/app", p.apiBaseUrl))
 
 		if err != nil {
-			return fmt.Errorf("Failed to load app profile: %w", err)
+			return fmt.Errorf("failed to load app profile: %w", err)
 		}
 
 		if response.IsError() {
-			return fmt.Errorf("Failed to load app profile: %v", response.Status())
+			return fmt.Errorf("failed to load app profile: %v", response.Status())
 		}
 
-		p.profile = &schema.PlatformProfile{
+		p.profile = schema.PlatformProfile{
 			Email: appProfile.Slug + "[bot]@users.noreply.github.com",
 		}
 
 		return nil
 
 	default:
-		return fmt.Errorf("Unrecognised auth type: %s", p.auth.Type)
+		return fmt.Errorf("unrecognised auth type: %s", p.auth.Type)
 	}
 }
 
@@ -403,7 +403,7 @@ func (p *GitHubPlatform) authedUserOrInstallationRequest() (*resty.Client, *rest
 		return p.authedInstallationRequest()
 
 	default:
-		return nil, nil, fmt.Errorf("Unrecognised auth type: %s", p.auth.Type)
+		return nil, nil, fmt.Errorf("unrecognised auth type: %s", p.auth.Type)
 	}
 }
 
@@ -412,11 +412,11 @@ func (p *GitHubPlatform) authedUserRequest() (*resty.Client, *resty.Request, err
 	request := client.NewRequest()
 
 	if p.auth == nil {
-		return nil, nil, fmt.Errorf("Error making authed request to GitHub: no auth config found")
+		return nil, nil, fmt.Errorf("error making authed request to GitHub: no auth config found")
 	}
 
 	if p.auth.Type != schema.AuthConfigTypeUserToken {
-		return nil, nil, fmt.Errorf("Error making user-authed request to GitHub: auth type is not %s", schema.AuthConfigTypeUserToken)
+		return nil, nil, fmt.Errorf("error making user-authed request to GitHub: auth type is not %s", schema.AuthConfigTypeUserToken)
 	}
 
 	request.SetHeader("Authorization", fmt.Sprintf("Bearer %s", p.auth.Token))
@@ -430,16 +430,16 @@ func (p *GitHubPlatform) authedAppRequest() (*resty.Client, *resty.Request, erro
 	request := client.NewRequest()
 
 	if p.auth == nil {
-		return nil, nil, fmt.Errorf("Error making authed request to GitHub: no auth config found")
+		return nil, nil, fmt.Errorf("error making authed request to GitHub: no auth config found")
 	}
 
 	if p.auth.Type != schema.AuthConfigTypeApp {
-		return nil, nil, fmt.Errorf("Error making app-authed request to GitHub: auth type is not %s", schema.AuthConfigTypeApp)
+		return nil, nil, fmt.Errorf("error making app-authed request to GitHub: auth type is not %s", schema.AuthConfigTypeApp)
 	}
 
 	jwt, err := p.auth.GenerateJwt()
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error making authed request to GitHub: %w", err)
+		return nil, nil, fmt.Errorf("error making authed request to GitHub: %w", err)
 	}
 
 	request.SetHeader("Authorization", fmt.Sprintf("Bearer %s", jwt))
@@ -453,11 +453,11 @@ func (p *GitHubPlatform) authedInstallationRequest() (*resty.Client, *resty.Requ
 	request := client.NewRequest()
 
 	if p.auth == nil {
-		return nil, nil, fmt.Errorf("Error making authed request to GitHub: no auth config found")
+		return nil, nil, fmt.Errorf("error making authed request to GitHub: no auth config found")
 	}
 
 	if p.auth.Type != schema.AuthConfigTypeApp {
-		return nil, nil, fmt.Errorf("Error making installation-authed request to GitHub: auth type is not %s", schema.AuthConfigTypeApp)
+		return nil, nil, fmt.Errorf("error making installation-authed request to GitHub: auth type is not %s", schema.AuthConfigTypeApp)
 	}
 
 	// generate new installation token if we don't have one already
@@ -474,11 +474,11 @@ func (p *GitHubPlatform) authedInstallationRequest() (*resty.Client, *resty.Requ
 		response, err := req.Post(fmt.Sprintf("%s/app/installations/%s/access_tokens", p.apiBaseUrl, p.auth.InstallationId))
 
 		if err != nil {
-			return nil, nil, fmt.Errorf("Error generating installation access token: %w", err)
+			return nil, nil, fmt.Errorf("error generating installation access token: %w", err)
 		}
 
 		if response.IsError() {
-			return nil, nil, fmt.Errorf("Error generating installation access token, status: %v", response.Status())
+			return nil, nil, fmt.Errorf("error generating installation access token, status: %v", response.Status())
 		}
 
 		p.auth.AppInstallationToken = installationToken.Token
