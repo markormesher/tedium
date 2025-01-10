@@ -211,7 +211,8 @@ func (p *GitHubPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandi
 		}
 
 		req.SetResult(&repoFile)
-		response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.apiBaseUrl, repo.OwnerName, repo.Name, path))
+		url := fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.apiBaseUrl, repo.OwnerName, repo.Name, path)
+		response, err := req.Get(url)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read file via GitHub API: %w", err)
 		}
@@ -220,6 +221,8 @@ func (p *GitHubPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandi
 			// no match for this candidate, but there may be others
 			continue
 		}
+
+		// TODO: handle non-200 statuses
 
 		fileBytes, err := base64.StdEncoding.DecodeString(repoFile.Content)
 		if err != nil {

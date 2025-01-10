@@ -179,7 +179,7 @@ func executeJob(conf schema.TediumConfig, executor schema.Executor, job schema.J
 		return
 	}
 
-	err = executors.PrepareJob(platform, job)
+	job, err = executors.PrepareJob(platform, job)
 	if err != nil {
 		l.Error("Failed to prepare job - aborting this chore", "error", err, "repo", job.Repo.FullName(), "chore", job.Chore.Name)
 		runStats.JobsFailed++

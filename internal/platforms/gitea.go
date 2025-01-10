@@ -152,7 +152,8 @@ func (p *GiteaPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandid
 		}
 
 		req.SetResult(&repoFile)
-		response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.apiBaseUrl, repo.OwnerName, repo.Name, path))
+		url := fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.apiBaseUrl, repo.OwnerName, repo.Name, path)
+		response, err := req.Get(url)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read file via Gitea API: %w", err)
 		}
@@ -162,12 +163,14 @@ func (p *GiteaPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandid
 			continue
 		}
 
-		fileStr, err := base64.StdEncoding.DecodeString(repoFile.Content)
+		// TODO: handle non-200 statuses
+
+		fileBytes, err := base64.StdEncoding.DecodeString(repoFile.Content)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode base64 string: %w", err)
 		}
 
-		return fileStr, nil
+		return fileBytes, nil
 	}
 
 	// no result for any path candidate
