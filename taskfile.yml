@@ -152,10 +152,10 @@ tasks:
     dir: '{{.ROOT_DIR}}'
     cmds:
       - cmd: |-
-          lint_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
-          if [[ ! -z "$lint_diff" ]]; then
-            echo "Lint errors:"
-            echo "$lint_diff"
+          fmt_diff=$(gofmt -e -s -d $(go list -f '{{ "{{.Dir}}" }}' ./... | grep -v /.go/ | grep -v /vendor/))
+          if [[ ! -z "$fmt_diff" ]]; then
+            echo "Format errors:"
+            echo "$fmt_diff"
             exit 1
           fi
   lintfix:
