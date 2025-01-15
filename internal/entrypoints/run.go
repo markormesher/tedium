@@ -39,9 +39,11 @@ func Run(conf schema.TediumConfig) {
 	}
 
 	// create job queue and worker pool
+	// we allow one job to buffer in the channel per worker, so each worker will virtually always be able to take a new job as soon as it finishes one
+	// this also slows down our calling of the platform APIs without slowing end to end exection time, which is a win-win
 	l.Info("Starting worker pool")
 	var workerWg sync.WaitGroup
-	jobQueue := make(chan schema.Job, conf.ChoreConcurrency*10)
+	jobQueue := make(chan schema.Job, conf.ChoreConcurrency)
 	for range conf.ChoreConcurrency {
 		workerWg.Add(1)
 		go func() {
