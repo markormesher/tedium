@@ -13,7 +13,7 @@ RUN go build -tags remote -o ./build/main ./cmd
 
 # ---
 
-FROM debian:bookworm@sha256:321341744acb788e251ebd374aecc1a42d60ce65da7bd4ee9207ff6be6686a62
+FROM debian:bookworm@sha256:4abf773f2a570e6873259c4e3ba16de6c6268fb571fd46ec80be7c67822823b3
 WORKDIR /app
 
 LABEL image.registry=ghcr.io
