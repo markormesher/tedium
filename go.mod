@@ -6,7 +6,7 @@ require (
 	github.com/containers/podman/v5 v5.4.1
 	github.com/go-git/go-git/v5 v5.13.2
 	github.com/go-resty/resty/v2 v2.16.5
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.32.3
 	k8s.io/apimachinery v0.32.3
