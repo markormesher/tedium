@@ -3,7 +3,7 @@ module github.com/markormesher/tedium
 go 1.24.2
 
 require (
-	github.com/containers/podman/v5 v5.4.1
+	github.com/containers/podman/v5 v5.4.2
 	github.com/go-git/go-git/v5 v5.14.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/golang-jwt/jwt/v5 v5.2.2
@@ -33,13 +33,13 @@ require (
 	github.com/containerd/platforms v1.0.0-rc.1 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.16.3 // indirect
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
-	github.com/containers/buildah v1.39.2 // indirect
-	github.com/containers/common v0.62.1 // indirect
-	github.com/containers/image/v5 v5.34.1 // indirect
+	github.com/containers/buildah v1.39.4 // indirect
+	github.com/containers/common v0.62.3 // indirect
+	github.com/containers/image/v5 v5.34.3 // indirect
 	github.com/containers/libtrust v0.0.0-20230121012942-c1716e8a8d01 // indirect
 	github.com/containers/ocicrypt v1.2.1 // indirect
 	github.com/containers/psgo v1.9.0 // indirect
-	github.com/containers/storage v1.57.1 // indirect
+	github.com/containers/storage v1.57.2 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.1-0.20231103132048-7d375ecc2b09 // indirect
 	github.com/cyberphone/json-canonicalization v0.0.0-20231217050601-ba74d44ecf5f // indirect
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
