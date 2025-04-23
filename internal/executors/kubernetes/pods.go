@@ -68,8 +68,10 @@ func (executor *KubernetesExecutor) printContainerLogs(podName string, container
 	if err != nil {
 		return fmt.Errorf("failed opening stream for container logs: %w", err)
 	}
+	defer func() {
+		_ = stream.Close()
+	}()
 
-	defer stream.Close()
 	_, err = io.Copy(os.Stdout, stream)
 	if err != nil {
 		return fmt.Errorf("failed to stream container logs: %w", err)

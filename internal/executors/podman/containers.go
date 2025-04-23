@@ -70,7 +70,10 @@ func (p *PodmanExecutor) printContainerLogs(name string) error {
 	}
 
 	l.Info("START of logs for container", "container", name)
-	containers.Logs(p.conn, name, &logOpts, logPrinter, logPrinter)
+	err := containers.Logs(p.conn, name, &logOpts, logPrinter, logPrinter)
+	if err != nil {
+		return fmt.Errorf("error printing container logs: %w", err)
+	}
 	close(logPrinter)
 	l.Info("END of logs for container", "container", name)
 
