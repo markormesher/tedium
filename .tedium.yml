@@ -1,2 +1,10 @@
 extends:
   - "https://github.com/markormesher/tedium-config"
+
+chores:
+  # overridden from the parent config
+  - url: "https://github.com/markormesher/tedium-chores"
+    directory: "generate-ci-config"
+    environment:
+      GO_RUNTIME_PACKAGES: "libgpgme-dev libbtrfs-dev"
+      GO_RUNTIME_ENV_GOFLAGS: "-tags=remote"
