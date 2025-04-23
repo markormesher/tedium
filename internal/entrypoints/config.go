@@ -81,7 +81,7 @@ func resolveRepoConfig(_ schema.TediumConfig, targetRepo schema.Repo) (schema.Re
 	}
 
 	// merge all configs on top of a blank template
-	var mergedConfig schema.RepoConfig
+	mergedConfig := schema.RepoConfig{}
 	for {
 		config, ok := configsToMerge.Pop()
 		if !ok {
