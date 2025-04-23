@@ -197,6 +197,7 @@ The full schema of repo configuration is defined in [schema/config.go](./interna
 
 ```yaml
 # URLs of repos containing more repo config to apply to this repo.
+# These links will be followed recursively and all discovered configs will be merged. Chores will be dedupicated, based on their URL and directory.
 # Optional.
 extends:
   - "https://github.com/example/tedium-config-all-repos"
@@ -204,6 +205,7 @@ extends:
 
 # Chores to execute against this repo.
 # Each chore is defined as a Git repo URL and a directory within that repo, plus extra optional configuration as below.
+# If a chore has the same URL and domain as one discovered from the `extends` config above their definitions will be merged.
 # Optional.
 chores:
   - url: "https://github.com/example/my-tedium-chores",
