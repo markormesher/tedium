@@ -60,7 +60,7 @@ func resolveRepoConfig(_ schema.TediumConfig, targetRepo schema.Repo) (schema.Re
 			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to read config file out of repo: no file exists")
 		}
 
-		var repoConfig *schema.RepoConfig
+		var repoConfig schema.RepoConfig
 		decoder := yaml.NewDecoder(bytes.NewReader(repoConfigRaw))
 		decoder.KnownFields(true)
 		err = decoder.Decode(&repoConfig)
@@ -77,7 +77,7 @@ func resolveRepoConfig(_ schema.TediumConfig, targetRepo schema.Repo) (schema.Re
 			}
 		}
 
-		configsToMerge.Push(*repoConfig)
+		configsToMerge.Push(repoConfig)
 	}
 
 	// merge all configs on top of a blank template
