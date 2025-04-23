@@ -81,6 +81,7 @@ jobs:
       - run:
           command: |-
             export GOPATH=$(pwd)/.go
+            export GOFLAGS="-tags remote"
             ./task lint-go
 workflows:
   version: 2
