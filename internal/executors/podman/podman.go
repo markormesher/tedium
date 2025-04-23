@@ -84,7 +84,10 @@ func (p *PodmanExecutor) ExecuteChore(job schema.Job) error {
 				},
 			}
 
-			p.pullImage(spec.Image)
+			err := p.pullImage(spec.Image)
+			if err != nil {
+				return fmt.Errorf("error pulling container image: %w", err)
+			}
 
 			createResponse, err := containers.CreateWithSpec(p.conn, spec, nil)
 			if err != nil {
