@@ -80,9 +80,9 @@ jobs:
           at: .
       - run:
           command: |-
-            export GOPATH=$(pwd)/.go
+            apt update && apt install -y --no-install-recommends libgpgme-dev libbtrfs-dev
             export GOFLAGS="-tags=remote"
-            apt update && apt install -y --no-install-recommends libbtrfs-dev libgpgme-dev
+            export GOPATH=$(pwd)/.go
             ./task lint-go
 workflows:
   version: 2
