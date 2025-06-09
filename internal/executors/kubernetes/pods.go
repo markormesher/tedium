@@ -18,6 +18,10 @@ func (executor *KubernetesExecutor) getContainerStatus(podName string, container
 		return nil, err
 	}
 
+	if containerIdx < len(pod.Status.ContainerStatuses) {
+		return nil, nil
+	}
+
 	return &pod.Status.ContainerStatuses[containerIdx], nil
 }
 
@@ -28,6 +32,11 @@ func (executor *KubernetesExecutor) waitForContainerCompletion(podName string, c
 		status, err := executor.getContainerStatus(podName, containerIdx)
 		if err != nil {
 			return true, fmt.Errorf("error getting container status to check completion: %w", err)
+		}
+
+		if status == nil {
+			// no status reported yet
+			return false, nil
 		}
 
 		if status.Image == executor.conf.Images.Pause {
