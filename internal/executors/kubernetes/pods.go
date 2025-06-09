@@ -18,7 +18,7 @@ func (executor *KubernetesExecutor) getContainerStatus(podName string, container
 		return nil, err
 	}
 
-	if containerIdx < len(pod.Status.ContainerStatuses) {
+	if containerIdx >= len(pod.Status.ContainerStatuses) {
 		return nil, nil
 	}
 
