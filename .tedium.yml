@@ -4,7 +4,7 @@ extends:
 chores:
   # overridden from the parent config
   - url: "https://github.com/markormesher/tedium-chores"
-    directory: "generate-ci-config"
+    directory: "generate-tasks-and-ci"
     environment:
       GO_RUNTIME_PACKAGES: "libgpgme-dev libbtrfs-dev"
       GO_RUNTIME_ENV_GOFLAGS: "-tags=remote"
