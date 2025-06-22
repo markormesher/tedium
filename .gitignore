@@ -1,5 +1,5 @@
 build/
-.imgrefs
+.task-meta-*
 
 # keep config private
 config*.json
