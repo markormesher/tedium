@@ -13,7 +13,7 @@ RUN go build -tags remote -o ./build/main ./cmd
 
 # ---
 
-FROM debian:trixie
+FROM debian:13.0
 WORKDIR /app
 
 LABEL image.registry=ghcr.io
