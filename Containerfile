@@ -13,7 +13,7 @@ RUN go build -tags remote -o ./build/main ./cmd
 
 # ---
 
-FROM debian:13.0
+FROM debian:13.0@sha256:6d87375016340817ac2391e670971725a9981cfc24e221c47734681ed0f6c0f5
 WORKDIR /app
 
 LABEL image.registry=ghcr.io
