@@ -92,38 +92,45 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 		} `json:"data"`
 	}
 
-	_, req := p.authedRequest()
-	req.SetResult(&repoData)
-	req.SetQueryParams(map[string]string{
-		"limit": "100",
-	})
-
-	response, err := req.Get(fmt.Sprintf("%s/repos/search", p.apiBaseUrl))
-
-	if err != nil {
-		return nil, fmt.Errorf("error making Gitea API request: %v", err)
-	}
-
-	if response.IsError() {
-		return nil, fmt.Errorf("error making Gitea API request, status: %v", response.Status())
-	}
-
 	var output []schema.Repo
-	for _, repo := range repoData.Data {
-		output = append(output, schema.Repo{
-			Domain:    p.domain,
-			OwnerName: repo.Owner.Username,
-			Name:      repo.Name,
+	url := fmt.Sprintf("%s/repos/search?page=1&limit=50", p.apiBaseUrl)
 
-			CloneUrl: repo.CloneUrl,
-			Auth: schema.RepoAuth{
-				// TODO: don't forget to set this properly when app auth is supported
-				Username: "x-access-token",
-				Password: p.auth.Token,
-			},
-			DefaultBranch: repo.DefaultBranch,
-			Archived:      repo.Archived,
-		})
+	for {
+		_, req := p.authedRequest()
+		req.SetResult(&repoData)
+
+		response, err := req.Get(url)
+		if err != nil {
+			return nil, fmt.Errorf("error making Gitea API request: %v", err)
+		}
+
+		if response.IsError() {
+			return nil, fmt.Errorf("error making Gitea API request, status: %v", response.Status())
+		}
+
+		for _, repo := range repoData.Data {
+			output = append(output, schema.Repo{
+				Domain:    p.domain,
+				OwnerName: repo.Owner.Username,
+				Name:      repo.Name,
+
+				CloneUrl: repo.CloneUrl,
+				Auth: schema.RepoAuth{
+					// TODO: don't forget to set this properly when app auth is supported
+					Username: "x-access-token",
+					Password: p.auth.Token,
+				},
+				DefaultBranch: repo.DefaultBranch,
+				Archived:      repo.Archived,
+			})
+		}
+
+		linkHeaders := utils.ParseLinkHeader(response.Header().Get("link"))
+		if nextLink, ok := linkHeaders["next"]; ok {
+			url = nextLink
+		} else {
+			break
+		}
 	}
 
 	return output, nil

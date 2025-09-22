@@ -97,37 +97,48 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 			} `json:"owner"`
 		}
 
-		_, req, err := p.authedUserRequest()
-		if err != nil {
-			return nil, fmt.Errorf("error making GitHub API request: %w", err)
-		}
-
-		req.SetResult(&repoData)
-		response, err := req.Get(fmt.Sprintf("%s/user/repos?per_page=100", p.apiBaseUrl))
-
-		if err != nil {
-			return nil, fmt.Errorf("error making GitHub API request: %w", err)
-		}
-
-		if response.IsError() {
-			return nil, fmt.Errorf("error making GitHub API request, status: %v", response.Status())
-		}
-
 		var output []schema.Repo
-		for _, repo := range repoData {
-			output = append(output, schema.Repo{
-				Domain:    p.domain,
-				OwnerName: repo.Owner.Username,
-				Name:      repo.Name,
+		url := fmt.Sprintf("%s/user/repos?page=1&per_page=50", p.apiBaseUrl)
 
-				CloneUrl: repo.CloneUrl,
-				Auth: schema.RepoAuth{
-					Username: "x-access-token",
-					Password: p.auth.Token,
-				},
-				DefaultBranch: repo.DefaultBranch,
-				Archived:      repo.Archived,
-			})
+		for {
+			_, req, err := p.authedUserRequest()
+			if err != nil {
+				return nil, fmt.Errorf("error making GitHub API request: %w", err)
+			}
+
+			req.SetResult(&repoData)
+
+			response, err := req.Get(url)
+			if err != nil {
+				return nil, fmt.Errorf("error making GitHub API request: %w", err)
+			}
+
+			if response.IsError() {
+				return nil, fmt.Errorf("error making GitHub API request, status: %v", response.Status())
+			}
+
+			for _, repo := range repoData {
+				output = append(output, schema.Repo{
+					Domain:    p.domain,
+					OwnerName: repo.Owner.Username,
+					Name:      repo.Name,
+
+					CloneUrl: repo.CloneUrl,
+					Auth: schema.RepoAuth{
+						Username: "x-access-token",
+						Password: p.auth.Token,
+					},
+					DefaultBranch: repo.DefaultBranch,
+					Archived:      repo.Archived,
+				})
+			}
+
+			linkHeaders := utils.ParseLinkHeader(response.Header().Get("link"))
+			if nextLink, ok := linkHeaders["next"]; ok {
+				url = nextLink
+			} else {
+				break
+			}
 		}
 
 		return output, nil
@@ -145,37 +156,48 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 			} `json:"repositories"`
 		}
 
-		_, req, err := p.authedInstallationRequest()
-		if err != nil {
-			return nil, fmt.Errorf("error making GitHub API request: %w", err)
-		}
-
-		req.SetResult(&repoData)
-		response, err := req.Get(fmt.Sprintf("%s/installation/repositories?per_page=100", p.apiBaseUrl))
-
-		if err != nil {
-			return nil, fmt.Errorf("error making GitHub API request: %w", err)
-		}
-
-		if response.IsError() {
-			return nil, fmt.Errorf("error making GitHub API request, status: %v", response.Status())
-		}
-
 		var output []schema.Repo
-		for _, repo := range repoData.Repos {
-			output = append(output, schema.Repo{
-				Domain:    p.domain,
-				OwnerName: repo.Owner.Username,
-				Name:      repo.Name,
+		url := fmt.Sprintf("%s/installation/repositories?page=1&per_page=50", p.apiBaseUrl)
 
-				CloneUrl: repo.CloneUrl,
-				Auth: schema.RepoAuth{
-					Username: "x-access-token",
-					Password: p.auth.AppInstallationToken,
-				},
-				DefaultBranch: repo.DefaultBranch,
-				Archived:      repo.Archived,
-			})
+		for {
+			_, req, err := p.authedInstallationRequest()
+			if err != nil {
+				return nil, fmt.Errorf("error making GitHub API request: %w", err)
+			}
+
+			req.SetResult(&repoData)
+			response, err := req.Get(url)
+
+			if err != nil {
+				return nil, fmt.Errorf("error making GitHub API request: %w", err)
+			}
+
+			if response.IsError() {
+				return nil, fmt.Errorf("error making GitHub API request, status: %v", response.Status())
+			}
+
+			for _, repo := range repoData.Repos {
+				output = append(output, schema.Repo{
+					Domain:    p.domain,
+					OwnerName: repo.Owner.Username,
+					Name:      repo.Name,
+
+					CloneUrl: repo.CloneUrl,
+					Auth: schema.RepoAuth{
+						Username: "x-access-token",
+						Password: p.auth.AppInstallationToken,
+					},
+					DefaultBranch: repo.DefaultBranch,
+					Archived:      repo.Archived,
+				})
+			}
+
+			linkHeaders := utils.ParseLinkHeader(response.Header().Get("link"))
+			if nextLink, ok := linkHeaders["next"]; ok {
+				url = nextLink
+			} else {
+				break
+			}
 		}
 
 		return output, nil
