@@ -16,9 +16,6 @@ RUN go build -tags remote -o ./build/main ./cmd
 FROM debian:13.3@sha256:5cf544fad978371b3df255b61e209b373583cb88b733475c86e49faa15ac2104
 WORKDIR /app
 
-LABEL image.registry=ghcr.io
-LABEL image.name=markormesher/tedium
-
 RUN apt update \
   && apt install -y --no-install-recommends \
   ca-certificates \
@@ -29,3 +26,12 @@ RUN apt update \
 COPY --from=builder /app/build/main /usr/local/bin/tedium
 
 CMD ["/usr/local/bin/tedium", "--config", "/tedium/config.yml"]
+
+LABEL image.name=markormesher/tedium
+LABEL image.registry=ghcr.io
+LABEL org.opencontainers.image.description=""
+LABEL org.opencontainers.image.documentation=""
+LABEL org.opencontainers.image.title="tedium"
+LABEL org.opencontainers.image.url="https://github.com/markormesher/tedium"
+LABEL org.opencontainers.image.vendor=""
+LABEL org.opencontainers.image.version=""
