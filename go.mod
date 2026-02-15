@@ -5,7 +5,7 @@ go 1.25.3
 require (
 	github.com/containers/podman/v5 v5.8.0
 	github.com/go-git/go-git/v5 v5.16.5
-	github.com/go-resty/resty/v2 v2.17.1
+	github.com/go-resty/resty/v2 v2.17.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.35.1
