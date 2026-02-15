@@ -86,6 +86,10 @@ func (executor *KubernetesExecutor) ExecuteChore(job schema.Job) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: executor.Namespace,
 			Name:      podName,
+			Labels: map[string]string{
+				"app.kubernetes.io/name":      "tedium",
+				"app.kubernetes.io/component": "executor",
+			},
 		},
 		Spec: v1.PodSpec{
 			RestartPolicy:                 "Never",
