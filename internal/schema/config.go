@@ -14,6 +14,9 @@ import (
 
 // TediumConfig is passed to the Tedium executable to control its behaviour.
 type TediumConfig struct {
+	// Version stores the version of Tedium itself.
+	Version string
+
 	// Executor defines the actual executor that will be used to perform chores.
 	Executor ExecutorConfig `json:"executor" yaml:"executor"`
 
@@ -64,7 +67,7 @@ type ResolvedRepoConfig struct {
 
 // ---
 
-func LoadTediumConfig(configFilePath string) (TediumConfig, error) {
+func LoadTediumConfig(configFilePath string, version string) (TediumConfig, error) {
 	configFileContent, err := os.ReadFile(configFilePath)
 	if err != nil {
 		return TediumConfig{}, fmt.Errorf("error reading configuration file: %v", err)
@@ -89,12 +92,20 @@ func LoadTediumConfig(configFilePath string) (TediumConfig, error) {
 
 	// apply defaults
 
+	if version != "" {
+		conf.Version = version
+	}
+
 	if conf.Images.Pause == "" {
 		conf.Images.Pause = "ghcr.io/markormesher/tedium-pause:v0"
 	}
 
 	if conf.Images.Tedium == "" {
-		conf.Images.Tedium = "ghcr.io/markormesher/tedium:v0"
+		if conf.Version == "" {
+			conf.Images.Tedium = "ghcr.io/markormesher/tedium:v0"
+		} else {
+			conf.Images.Tedium = "ghcr.io/markormesher/tedium:" + conf.Version
+		}
 	}
 
 	if conf.ChoreConcurrency < 1 {

@@ -10,6 +10,7 @@ import (
 )
 
 var l = logging.Logger
+var version string // populated via ldflags
 
 func main() {
 	internalCommand := flag.String("internal-command", "", "Internal command to perform when Tedium is running itself inside an executor")
@@ -33,7 +34,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	conf, err := schema.LoadTediumConfig(*configFilePath)
+	conf, err := schema.LoadTediumConfig(*configFilePath, version)
 	if err != nil {
 		l.Error("Error loading configuration", "error", err)
 		os.Exit(1)

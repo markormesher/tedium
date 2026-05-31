@@ -82,6 +82,7 @@ func envForStep(platform platforms.Platform, job schema.Job, step schema.ChoreSt
 	env["TEDIUM_REPO_CLONE_URL"] = job.Repo.CloneUrl
 	env["TEDIUM_REPO_DEFAULT_BRANCH"] = job.Repo.DefaultBranch
 	env["TEDIUM_PLATFORM_TYPE"] = platform.Config().Type
+	env["TEDIUM_PLATFORM_PROTOCOL"] = platform.Config().Protocol
 	env["TEDIUM_PLATFORM_DOMAIN"] = platform.Config().Domain
 	env["TEDIUM_PLATFORM_API_BASE_URL"] = platform.ApiBaseUrl()
 	env["TEDIUM_PLATFORM_EMAIL"] = platform.Profile().Email
