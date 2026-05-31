@@ -97,12 +97,12 @@ func LoadTediumConfig(configFilePath string, version string) (TediumConfig, erro
 	}
 
 	if conf.Images.Pause == "" {
-		conf.Images.Pause = "ghcr.io/markormesher/tedium-pause:v0"
+		conf.Images.Pause = "ghcr.io/markormesher/tedium-pause:latest"
 	}
 
 	if conf.Images.Tedium == "" {
 		if conf.Version == "" {
-			conf.Images.Tedium = "ghcr.io/markormesher/tedium:v0"
+			conf.Images.Tedium = "ghcr.io/markormesher/tedium:latest"
 		} else {
 			conf.Images.Tedium = "ghcr.io/markormesher/tedium:" + conf.Version
 		}
