@@ -135,12 +135,12 @@ platforms:
 images:
 
   # Tedium image used for pre- and post-chore steps.
-  # Optional, defaults to the latest tag within the same major version.
-  tedium: "ghcr.io/markormesher/tedium:v0"
+  # Optional, defaults to latest.
+  tedium: "ghcr.io/markormesher/tedium:v0.1.2"
 
   # Placeholder image used by the Kubernetes executor.
-  # Optional, defaults to the latest tag within the same major version.
-  pause: "ghcr.io/markormesher/tedium-pause:v0"
+  # Optional, defaults to latest.
+  pause: "ghcr.io/markormesher/tedium-pause:v0.1.2"
 
 # Auto-enrollment settings for discovered repos that don't already have a repo configuration file.
 # Optional, defaults to disabled.
