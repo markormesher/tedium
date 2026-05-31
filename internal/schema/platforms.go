@@ -16,6 +16,9 @@ type PlatformConfig struct {
 	Domain   string      `json:"domain" yaml:"domain"`
 	Auth     *AuthConfig `json:"auth" yaml:"auth"`
 
+	// AliasDomains define other domains that this platform should be used for (e.g. if you host a mirror of a public platform, or access a platform from multiple URLs).
+	AliasDomains []string
+
 	// SkipDiscovery specifies that this platform should not be used to discover target repos (i.e. it is only used for reading config).
 	SkipDiscovery bool `json:"skipDiscovery" yaml:"skipDiscovery"`
 
