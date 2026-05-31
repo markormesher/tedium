@@ -2,12 +2,10 @@ package platforms
 
 import (
 	"fmt"
+	"log/slog"
 
-	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/schema"
 )
-
-var l = logging.Logger
 
 var platformCache []Platform
 
@@ -48,7 +46,7 @@ func FromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) 
 	}
 
 	if platformConfig.Auth == nil {
-		l.Warn("Platform created without auth config; it will only be able to read public repos and will not be able to create PRs.", "domain", platformConfig.Domain)
+		slog.Warn("Platform created without auth config; it will only be able to read public repos and will not be able to create PRs.", "domain", platformConfig.Domain)
 	}
 
 	switch platformConfig.Type {

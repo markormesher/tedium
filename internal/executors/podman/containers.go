@@ -2,6 +2,7 @@ package podman
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/containers/podman/v5/libpod/define"
 	"github.com/containers/podman/v5/pkg/bindings/containers"
 	"github.com/containers/podman/v5/pkg/bindings/images"
-	"github.com/markormesher/tedium/internal/utils"
 )
 
 var logPrinterLock sync.Mutex
@@ -21,12 +21,12 @@ func (p *PodmanExecutor) pullImage(name string) error {
 	}
 
 	if exists {
-		l.Debug("Image already exists - not pulling", "image", name)
+		slog.Debug("Image already exists - not pulling", "image", name)
 		return nil
 	}
 
-	l.Info("Pulling container image", "image", name)
-	_, err = images.Pull(p.conn, name, &images.PullOptions{Quiet: utils.BoolPtr(true)})
+	slog.Info("Pulling container image", "image", name)
+	_, err = images.Pull(p.conn, name, &images.PullOptions{Quiet: new(true)})
 	if err != nil {
 		return fmt.Errorf("error pulling image: %w", err)
 	}
@@ -64,18 +64,18 @@ func (p *PodmanExecutor) printContainerLogs(name string) error {
 	}()
 
 	logOpts := containers.LogOptions{
-		Follow: utils.BoolPtr(false),
-		Stderr: utils.BoolPtr(true),
-		Stdout: utils.BoolPtr(true),
+		Follow: new(false),
+		Stderr: new(true),
+		Stdout: new(true),
 	}
 
-	l.Info("START of logs for container", "container", name)
+	slog.Info("START of logs for container", "container", name)
 	err := containers.Logs(p.conn, name, &logOpts, logPrinter, logPrinter)
 	if err != nil {
 		return fmt.Errorf("error printing container logs: %w", err)
 	}
 	close(logPrinter)
-	l.Info("END of logs for container", "container", name)
+	slog.Info("END of logs for container", "container", name)
 
 	return nil
 }
@@ -83,7 +83,7 @@ func (p *PodmanExecutor) printContainerLogs(name string) error {
 func (p *PodmanExecutor) deleteContainerIfExists(name string) {
 	exists, err := containers.Exists(p.conn, name, nil)
 	if err != nil {
-		l.Error("Error checking if container exists before deleting", "error", err)
+		slog.Error("Error checking if container exists before deleting", "error", err)
 	}
 
 	if !exists {
@@ -92,17 +92,17 @@ func (p *PodmanExecutor) deleteContainerIfExists(name string) {
 
 	container, err := containers.Inspect(p.conn, name, nil)
 	if err != nil {
-		l.Error("Error inspecting container before deleting", "error", err)
+		slog.Error("Error inspecting container before deleting", "error", err)
 	}
 
 	if container.State.Running {
-		l.Warn("Cleaning up a container that is still running - this is bad!", "name", container.Name)
+		slog.Warn("Cleaning up a container that is still running - this is bad!", "name", container.Name)
 	}
 
 	_, err = containers.Remove(p.conn, name, &containers.RemoveOptions{
-		Force: utils.BoolPtr(true),
+		Force: new(true),
 	})
 	if err != nil {
-		l.Error("Error deleting container", "error", err)
+		slog.Error("Error deleting container", "error", err)
 	}
 }

@@ -3,6 +3,7 @@ package entrypoints
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 
 	"maps"
 
@@ -48,7 +49,7 @@ func resolveRepoConfig(_ schema.TediumConfig, targetRepo schema.Repo) (schema.Re
 
 		platform := platforms.FromDomain(configRepo.Domain)
 		if platform == nil {
-			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to determine a platform to read repo config (domain: %s)", configRepo.Domain)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to determine a platform to read repo config (config URL: %s, platform domain: %s)", configUrl, configRepo.Domain)
 		}
 
 		var repoConfigRaw []byte
@@ -71,7 +72,7 @@ func resolveRepoConfig(_ schema.TediumConfig, targetRepo schema.Repo) (schema.Re
 		for _, extendsUrl := range repoConfig.Extends {
 			visited := urlsVisited[extendsUrl]
 			if visited {
-				l.Warn("loop detected in config extension - saw a URL for the second time", "url", extendsUrl)
+				slog.Warn("loop detected in config extension - saw a URL for the second time", "url", extendsUrl)
 			} else {
 				urlsToVisit.Push(extendsUrl)
 			}

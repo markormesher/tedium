@@ -2,16 +2,14 @@ package executors
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/markormesher/tedium/internal/executors/kubernetes"
 	"github.com/markormesher/tedium/internal/executors/podman"
-	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/platforms"
 	"github.com/markormesher/tedium/internal/schema"
 )
-
-var l = logging.Logger
 
 func FromExecutorConfig(ec schema.ExecutorConfig) (schema.Executor, error) {
 	switch {
@@ -92,7 +90,7 @@ func envForStep(platform platforms.Platform, job schema.Job, step schema.ChoreSt
 
 	for k, v := range step.Environment {
 		if !step.Internal && strings.HasPrefix(k, "TEDIUM_") {
-			l.Warn("Not passing environment variable to chore step", "key", k)
+			slog.Warn("Not passing environment variable to chore step", "key", k)
 		} else {
 			env[k] = v
 		}
@@ -100,7 +98,7 @@ func envForStep(platform platforms.Platform, job schema.Job, step schema.ChoreSt
 
 	for k, v := range job.Chore.SourceConfig.Environment {
 		if strings.HasPrefix(k, "TEDIUM_") {
-			l.Warn("Not passing environment variable to chore step", "key", k)
+			slog.Warn("Not passing environment variable to chore step", "key", k)
 		} else {
 			env[k] = v
 		}

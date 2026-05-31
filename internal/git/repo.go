@@ -3,6 +3,7 @@ package git
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
@@ -10,11 +11,8 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/schema"
 )
-
-var l = logging.Logger
 
 // repos are only ever cloned inside an execution container, so this path doesn't change per-repo
 var repoClonePath = "/tedium/repo"
@@ -22,7 +20,7 @@ var repoClonePath = "/tedium/repo"
 func CloneRepo(job schema.Job, conf schema.TediumConfig) error {
 	repo := job.Repo
 
-	l.Info("Cloning repo", "url", repo.CloneUrl)
+	slog.Info("Cloning repo", "url", repo.CloneUrl)
 
 	err := os.MkdirAll(repoClonePath, os.ModePerm)
 	if err != nil {
@@ -66,7 +64,7 @@ func CheckoutWorkBranch(job schema.Job) error {
 		return fmt.Errorf("error checking whether chore branch already exists: %w", err)
 	}
 
-	l.Info("Checking out work branch for chore", "branch", job.WorkBranchName, "created", !branchExists)
+	slog.Info("Checking out work branch for chore", "branch", job.WorkBranchName, "created", !branchExists)
 
 	branchRefName := plumbing.NewBranchReferenceName(job.WorkBranchName)
 	err = worktree.Checkout(&git.CheckoutOptions{
@@ -95,7 +93,7 @@ func CommitIfChanged(job schema.Job, profile schema.PlatformProfile) (bool, erro
 		return false, nil
 	}
 
-	l.Info("Committing changes")
+	slog.Info("Committing changes")
 
 	_, err = worktree.Add(".")
 	if err != nil {
@@ -154,7 +152,7 @@ func PushWorkBranchToFinalBranch(job schema.Job) error {
 		return err
 	}
 
-	l.Info("Pushing changes")
+	slog.Info("Pushing changes")
 
 	err = realRepo.Push(&git.PushOptions{
 		RefSpecs: []config.RefSpec{
