@@ -36,9 +36,10 @@ func giteaPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.Pla
 	return &GiteaPlatform{
 		PlatformConfig: platformConfig,
 
-		domain:     platformConfig.Domain,
-		auth:       platformConfig.Auth,
-		apiBaseUrl: fmt.Sprintf("%s://%s/api/v1", platformConfig.Protocol, platformConfig.Domain),
+		domain:       platformConfig.Domain,
+		aliasDomains: platformConfig.AliasDomains,
+		auth:         platformConfig.Auth,
+		apiBaseUrl:   fmt.Sprintf("%s://%s/api/v1", platformConfig.Protocol, platformConfig.Domain),
 	}, nil
 }
 

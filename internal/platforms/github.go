@@ -32,9 +32,10 @@ func githubPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.Pl
 	return &GitHubPlatform{
 		PlatformConfig: platformConfig,
 
-		domain:     platformConfig.Domain,
-		auth:       platformConfig.Auth,
-		apiBaseUrl: fmt.Sprintf("%s://api.%s", platformConfig.Protocol, platformConfig.Domain),
+		domain:       platformConfig.Domain,
+		aliasDomains: platformConfig.AliasDomains,
+		auth:         platformConfig.Auth,
+		apiBaseUrl:   fmt.Sprintf("%s://api.%s", platformConfig.Protocol, platformConfig.Domain),
 	}, nil
 }
 
