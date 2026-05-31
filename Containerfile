@@ -1,15 +1,16 @@
 FROM docker.io/golang:1.26.3@sha256:2d6c80227255c3112a4d08e67ba98e58efd3846daf15d9d7d4c389565d881b1a as builder
 WORKDIR /app
 
-RUN apt update && apt install -y --no-install-recommends libbtrfs-dev libgpgme-dev
+RUN apt update && apt install -y --no-install-recommends libbtrfs-dev libgpgme-dev git
 
 COPY go.mod go.sum ./
 RUN go mod download
 
+COPY ./.git ./.git
 COPY ./cmd ./cmd
 COPY ./internal ./internal
 
-RUN go build -tags remote -o ./build/main ./cmd
+RUN go build -tags remote -ldflags "-X 'cmd.version=$(git describe --tags)'" -o ./build/main ./cmd
 
 # ---
 
