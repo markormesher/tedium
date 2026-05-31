@@ -22,12 +22,16 @@ type GitHubPlatform struct {
 }
 
 func githubPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) (*GitHubPlatform, error) {
+	if platformConfig.Protocol == "" {
+		platformConfig.Protocol = "https"
+	}
+
 	return &GitHubPlatform{
 		PlatformConfig: platformConfig,
 
 		domain:     platformConfig.Domain,
 		auth:       platformConfig.Auth,
-		apiBaseUrl: fmt.Sprintf("https://api.%s", platformConfig.Domain),
+		apiBaseUrl: fmt.Sprintf("%s://api.%s", platformConfig.Protocol, platformConfig.Domain),
 	}, nil
 }
 

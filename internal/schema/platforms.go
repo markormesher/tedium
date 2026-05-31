@@ -11,9 +11,10 @@ import (
 
 // PlatformConfig defines a Git platform from which repos can be discovered, such as Gitea or GitHub.
 type PlatformConfig struct {
-	Type   string      `json:"type" yaml:"type"`
-	Domain string      `json:"domain" yaml:"domain"`
-	Auth   *AuthConfig `json:"auth" yaml:"auth"`
+	Type     string      `json:"type" yaml:"type"`
+	Protocol string      `json:"protocol" yaml:"protocol"`
+	Domain   string      `json:"domain" yaml:"domain"`
+	Auth     *AuthConfig `json:"auth" yaml:"auth"`
 
 	// SkipDiscovery specifies that this platform should not be used to discover target repos (i.e. it is only used for reading config).
 	SkipDiscovery bool `json:"skipDiscovery" yaml:"skipDiscovery"`

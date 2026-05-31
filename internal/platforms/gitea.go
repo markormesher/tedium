@@ -26,12 +26,16 @@ func giteaPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.Pla
 		return nil, fmt.Errorf("cannot construct Gitea platform with auth type other than user token (domain: %s)", platformConfig.Domain)
 	}
 
+	if platformConfig.Protocol == "" {
+		platformConfig.Protocol = "https"
+	}
+
 	return &GiteaPlatform{
 		PlatformConfig: platformConfig,
 
 		domain:     platformConfig.Domain,
 		auth:       platformConfig.Auth,
-		apiBaseUrl: fmt.Sprintf("https://%s/api/v1", platformConfig.Domain),
+		apiBaseUrl: fmt.Sprintf("%s://%s/api/v1", platformConfig.Protocol, platformConfig.Domain),
 	}, nil
 }
 
