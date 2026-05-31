@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/markormesher/tedium/internal/schema"
@@ -14,8 +15,9 @@ type GitHubPlatform struct {
 	schema.PlatformConfig
 
 	// supplied via config
-	domain string
-	auth   *schema.AuthConfig
+	domain       string
+	aliasDomains []string
+	auth         *schema.AuthConfig
 
 	// generated locally
 	apiBaseUrl string
@@ -60,7 +62,7 @@ func (p *GitHubPlatform) ApiBaseUrl() string {
 }
 
 func (p *GitHubPlatform) AcceptsDomain(domain string) bool {
-	return domain == p.domain
+	return domain == p.domain || slices.Contains(p.aliasDomains, domain)
 }
 
 func (p *GitHubPlatform) Profile() schema.PlatformProfile {
