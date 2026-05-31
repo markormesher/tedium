@@ -3,6 +3,8 @@ package platforms
 import (
 	"encoding/base64"
 	"fmt"
+	"log/slog"
+	"slices"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/markormesher/tedium/internal/schema"
@@ -13,8 +15,9 @@ type GiteaPlatform struct {
 	schema.PlatformConfig
 
 	// supplied via config
-	domain string
-	auth   *schema.AuthConfig
+	domain       string
+	aliasDomains []string
+	auth         *schema.AuthConfig
 
 	// generated locally
 	apiBaseUrl string
@@ -63,7 +66,7 @@ func (p *GiteaPlatform) ApiBaseUrl() string {
 }
 
 func (p *GiteaPlatform) AcceptsDomain(domain string) bool {
-	return domain == p.domain
+	return domain == p.domain || slices.Contains(p.aliasDomains, domain)
 }
 
 func (p *GiteaPlatform) Profile() schema.PlatformProfile {
@@ -80,7 +83,7 @@ func (p *GiteaPlatform) AuthToken() string {
 
 func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	if p.auth == nil {
-		l.Warn("No auth configured for paltform; skipping repo discovery", "domain", p.domain)
+		slog.Warn("No auth configured for paltform; skipping repo discovery", "domain", p.domain)
 		return []schema.Repo{}, nil
 	}
 
@@ -189,7 +192,7 @@ func (p *GiteaPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandid
 }
 
 func (p *GiteaPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
-	l.Info("Opening or updating PR", "chore", job.Chore.Name)
+	slog.Info("Opening or updating PR", "chore", job.Chore.Name)
 
 	var existingPrs []struct {
 		Num   int    `json:"number"`
@@ -235,10 +238,10 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 	req.SetBody(prBody)
 
 	if existingPrNum == 0 {
-		l.Debug("Opening PR")
+		slog.Debug("Opening PR")
 		response, err = req.Post(fmt.Sprintf("%s/repos/%s/%s/pulls", p.apiBaseUrl, job.Repo.OwnerName, job.Repo.Name))
 	} else {
-		l.Debug("Updating PR")
+		slog.Debug("Updating PR")
 		response, err = req.Patch(fmt.Sprintf("%s/repos/%s/%s/pulls/%d", p.apiBaseUrl, job.Repo.OwnerName, job.Repo.Name, existingPrNum))
 	}
 

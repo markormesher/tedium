@@ -2,6 +2,7 @@ package podman
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/containers/podman/v5/pkg/bindings/volumes"
 	podmanTypes "github.com/containers/podman/v5/pkg/domain/entities/types"
@@ -24,13 +25,13 @@ func (p *PodmanExecutor) createVolume(role string) (string, error) {
 func (p *PodmanExecutor) deleteVolumeIfExists(name string) {
 	exists, err := volumes.Exists(p.conn, name, nil)
 	if err != nil {
-		l.Error("Error checking if volume exists before deleting", "error", err)
+		slog.Error("Error checking if volume exists before deleting", "error", err)
 	}
 
 	if exists {
 		err := volumes.Remove(p.conn, name, nil)
 		if err != nil {
-			l.Error("Error deleting volume", "error", err)
+			slog.Error("Error deleting volume", "error", err)
 		}
 	}
 }

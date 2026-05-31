@@ -3,17 +3,15 @@ package podman
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os/user"
 
 	"github.com/containers/podman/v5/pkg/bindings"
 	"github.com/containers/podman/v5/pkg/bindings/containers"
 	"github.com/containers/podman/v5/pkg/specgen"
-	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/schema"
 	"github.com/markormesher/tedium/internal/utils"
 )
-
-var l = logging.Logger
 
 type PodmanExecutor struct {
 	SocketPath string
@@ -33,20 +31,20 @@ func (p *PodmanExecutor) Init(conf schema.TediumConfig) error {
 	p.conf = conf
 
 	if p.SocketPath == "" {
-		l.Info("No Podman socket provided - will attempt to use a default value")
+		slog.Info("No Podman socket provided - will attempt to use a default value")
 		usr, err := user.Current()
 		switch {
 		case err != nil:
 			p.SocketPath = "unix:///run/podman/podman.sock"
-			l.Info("Error determining current user - using the root-owned socket", "socketPath", p.SocketPath)
+			slog.Info("Error determining current user - using the root-owned socket", "socketPath", p.SocketPath)
 
 		case usr.Uid == "0":
 			p.SocketPath = "unix:///run/podman/podman.sock"
-			l.Info("User is root - using the root-owned socket", "socketPath", p.SocketPath)
+			slog.Info("User is root - using the root-owned socket", "socketPath", p.SocketPath)
 
 		default:
 			p.SocketPath = fmt.Sprintf("unix:///run/user/%s/podman/podman.sock", usr.Uid)
-			l.Info("Using the user-owned socket", "socketPath", p.SocketPath)
+			slog.Info("Using the user-owned socket", "socketPath", p.SocketPath)
 		}
 	}
 
@@ -98,7 +96,7 @@ func (p *PodmanExecutor) ExecuteChore(job schema.Job) error {
 				p.deleteContainerIfExists(spec.Name)
 			}()
 
-			l.Info("Starting container", "container", spec.Name)
+			slog.Info("Starting container", "container", spec.Name)
 			err = containers.Start(p.conn, createResponse.ID, nil)
 			if err != nil {
 				return fmt.Errorf("error starting container: %w", err)
@@ -108,7 +106,7 @@ func (p *PodmanExecutor) ExecuteChore(job schema.Job) error {
 			if err != nil {
 				return fmt.Errorf("error waiting for container to complete: %w", err)
 			}
-			l.Info("container finished", "container", spec.Name, "exitCode", exitCode)
+			slog.Info("container finished", "container", spec.Name, "exitCode", exitCode)
 
 			err = p.printContainerLogs(spec.Name)
 			if err != nil {

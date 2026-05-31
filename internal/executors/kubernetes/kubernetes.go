@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"sync"
 
-	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/schema"
 	"github.com/markormesher/tedium/internal/utils"
 	v1 "k8s.io/api/core/v1"
@@ -18,7 +18,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-var l = logging.Logger
 var k8sExecutorContext = context.TODO()
 
 var logPrinterLock sync.Mutex
@@ -36,7 +35,7 @@ type KubernetesExecutor struct {
 func FromConfig(c schema.KubernetesExecutorConfig) (*KubernetesExecutor, error) {
 	namespace := c.Namespace
 	if namespace == "" {
-		l.Warn("Kubernetes executor namespace was blank - using 'default'")
+		slog.Warn("Kubernetes executor namespace was blank - using 'default'")
 		namespace = "default"
 	}
 
@@ -58,7 +57,7 @@ func (executor *KubernetesExecutor) Init(conf schema.TediumConfig) error {
 			return fmt.Errorf("error creating Kube config from provided path: %w", err)
 		}
 	} else {
-		l.Info("No kubeconfig path provided - attempting to use in-cluster config")
+		slog.Info("No kubeconfig path provided - attempting to use in-cluster config")
 		kubeConfig, err = rest.InClusterConfig()
 		if err != nil {
 			return fmt.Errorf("error creating Kube config in-cluster config: %w", err)
@@ -132,7 +131,7 @@ func (executor *KubernetesExecutor) ExecuteChore(job schema.Job) error {
 	defer func() {
 		err := executor.podClient.Delete(k8sExecutorContext, podName, metav1.DeleteOptions{})
 		if err != nil {
-			l.Error("error deleting execution pod", "error", err)
+			slog.Error("error deleting execution pod", "error", err)
 		}
 	}()
 
@@ -146,7 +145,7 @@ func (executor *KubernetesExecutor) ExecuteChore(job schema.Job) error {
 			},
 		}
 		patchBytes, err := json.Marshal(patch)
-		l.Info("Starting step", "step", i)
+		slog.Info("Starting step", "step", i)
 		if err != nil {
 			return fmt.Errorf("error marshalling JSON patch to set image: %w", err)
 		}
@@ -163,12 +162,12 @@ func (executor *KubernetesExecutor) ExecuteChore(job schema.Job) error {
 
 		// acquire a lock for output printing, so we don't mingle logs from multiple containers
 		logPrinterLock.Lock()
-		l.Info("START of logs for container", "pod", podName, "container", i)
+		slog.Info("START of logs for container", "pod", podName, "container", i)
 		err = executor.printContainerLogs(podName, i)
 		if err != nil {
-			l.Error("failed to print container logs", "err", err)
+			slog.Error("failed to print container logs", "err", err)
 		}
-		l.Info("END of logs for container", "pod", podName, "container", i)
+		slog.Info("END of logs for container", "pod", podName, "container", i)
 		logPrinterLock.Unlock()
 
 		if exitCode != 0 {
