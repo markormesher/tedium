@@ -108,9 +108,15 @@ platforms:
     # Required.
   - type: "gitea"
 
-    # Platform domain. Don't include any path segments. For GitHub instances, do not include the "api." subdomain.
+    # Platform base URL. Don't include any path segments. For GitHub instances, do not include the "api." subdomain.
     # Required.
-    domain: "gitea.example.com"
+    baseUrl: "https://gitea.example.com"
+
+    # Alternate base URLs for this platform. Useful if you host an internal mirror or access a platform from multiple URLs.
+    # If any target repo or chore uses one of these URLs, it will be rewritten to use the base URL above.
+    # Optional.
+    alternateBaseURLs:
+      - "http://gitea-mirror.example.lan:3000"
 
     # List of regexes to filter repos against during discovery.
     # Repos matching any filter will be included.
@@ -205,7 +211,7 @@ extends:
 
 # Chores to execute against this repo.
 # Each chore is defined as a Git repo URL and a directory within that repo, plus extra optional configuration as below.
-# If a chore has the same URL and domain as one discovered from the `extends` config above their definitions will be merged.
+# If a chore has the same URL and directory as one discovered from the `extends` config above their definitions will be merged.
 # Optional.
 chores:
   - url: "https://github.com/example/my-tedium-chores",
