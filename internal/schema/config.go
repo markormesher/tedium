@@ -118,13 +118,16 @@ func LoadTediumConfig(configFilePath string, version string) (TediumConfig, erro
 		return TediumConfig{}, fmt.Errorf("invalid Tedium config: more than one executor configured")
 	}
 
-	domainsSeen := map[string]bool{}
+	urlsSeen := map[string]bool{}
 	for _, platform := range conf.Platforms {
-		domain := platform.Domain
-		if domainsSeen[domain] {
-			return TediumConfig{}, fmt.Errorf("invalid Tedium config: duplicate platform domain %s", domain)
+		allUrls := []string{platform.BaseURL}
+		allUrls = append(allUrls, platform.AlternateBaseURLs...)
+		for _, url := range allUrls {
+			if urlsSeen[url] {
+				return TediumConfig{}, fmt.Errorf("invalid Tedium config: duplicate platform URL %s", url)
+			}
+			urlsSeen[url] = true
 		}
-		domainsSeen[domain] = true
 	}
 
 	return conf, nil

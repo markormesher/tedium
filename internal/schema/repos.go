@@ -12,9 +12,9 @@ import (
 // Repo represents a real Git repo, which may be either a remote repo from which chores or config are read, or a target repo cloned to disk.
 type Repo struct {
 	// present for all repos
-	Domain    string
-	OwnerName string
-	Name      string
+	PlatformBaseURL string
+	OwnerName       string
+	Name            string
 
 	// present for target repos only
 	CloneUrl      string
@@ -53,8 +53,8 @@ func RepoFromUrl(repoUrl string) (Repo, error) {
 	}
 
 	return Repo{
-		Domain:    domain,
-		OwnerName: pathSegments[0],
-		Name:      strings.TrimSuffix(pathSegments[1], ".git"),
+		PlatformBaseURL: domain,
+		OwnerName:       pathSegments[0],
+		Name:            strings.TrimSuffix(pathSegments[1], ".git"),
 	}, nil
 }

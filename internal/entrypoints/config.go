@@ -47,9 +47,9 @@ func resolveRepoConfig(_ schema.TediumConfig, targetRepo schema.Repo) (schema.Re
 			return schema.ResolvedRepoConfig{}, fmt.Errorf("error constructing config repo before reading its config: %w", err)
 		}
 
-		platform := platforms.FromDomain(configRepo.Domain)
+		platform := platforms.FromURL(configRepo.PlatformBaseURL)
 		if platform == nil {
-			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to determine a platform to read repo config (config URL: %s, platform domain: %s)", configUrl, configRepo.Domain)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to determine a platform to read repo config (config URL: %s, platform domain: %s)", configUrl, configRepo.PlatformBaseURL)
 		}
 
 		var repoConfigRaw []byte
@@ -110,9 +110,9 @@ func resolveRepoConfig(_ schema.TediumConfig, targetRepo schema.Repo) (schema.Re
 			return schema.ResolvedRepoConfig{}, fmt.Errorf("error constructing chore repo before reading its config: %w", err)
 		}
 
-		platform := platforms.FromDomain(choreRepo.Domain)
+		platform := platforms.FromURL(choreRepo.PlatformBaseURL)
 		if platform == nil {
-			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to determine a platform to read chore config (domain: %s)", choreRepo.Domain)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to determine a platform to read chore config (domain: %s)", choreRepo.PlatformBaseURL)
 		}
 
 		var choreSpecRaw []byte
