@@ -147,6 +147,10 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 				return nil, fmt.Errorf("platform returned a repo with an unaccepted clone URL: %s", repo.CloneUrl)
 			}
 
+			if cloneURL != repo.CloneUrl {
+				slog.Info("updated clone URL: " + repo.CloneUrl + " -> " + cloneURL)
+			}
+
 			output = append(output, schema.Repo{
 				OwnerName: repo.Owner.Username,
 				Name:      repo.Name,
