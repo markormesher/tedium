@@ -12,9 +12,8 @@ import (
 // Repo represents a real Git repo, which may be either a remote repo from which chores or config are read, or a target repo cloned to disk.
 type Repo struct {
 	// present for all repos
-	PlatformBaseURL string
-	OwnerName       string
-	Name            string
+	OwnerName string
+	Name      string
 
 	// present for target repos only
 	CloneUrl      string
@@ -45,7 +44,6 @@ func RepoFromUrl(repoUrl string) (Repo, error) {
 		return Repo{}, fmt.Errorf("error parsing repo URL: %w", err)
 	}
 
-	domain := urlParsed.Host
 	path := strings.Trim(urlParsed.Path, "/")
 	pathSegments := strings.Split(path, "/")
 	if len(pathSegments) != 2 {
@@ -53,8 +51,7 @@ func RepoFromUrl(repoUrl string) (Repo, error) {
 	}
 
 	return Repo{
-		PlatformBaseURL: domain,
-		OwnerName:       pathSegments[0],
-		Name:            strings.TrimSuffix(pathSegments[1], ".git"),
+		OwnerName: pathSegments[0],
+		Name:      strings.TrimSuffix(pathSegments[1], ".git"),
 	}, nil
 }

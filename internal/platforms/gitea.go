@@ -148,9 +148,8 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 			}
 
 			output = append(output, schema.Repo{
-				PlatformBaseURL: p.baseURLs[0].String(),
-				OwnerName:       repo.Owner.Username,
-				Name:            repo.Name,
+				OwnerName: repo.Owner.Username,
+				Name:      repo.Name,
 
 				CloneUrl: cloneURL,
 				Auth: schema.RepoAuth{
