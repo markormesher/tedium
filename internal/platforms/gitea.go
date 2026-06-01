@@ -119,6 +119,7 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 			CloneUrl      string `json:"clone_url"`
 			DefaultBranch string `json:"default_branch"`
 			Archived      bool   `json:"archived"`
+			Mirror        bool   `json:"mirror"`
 			Owner         struct {
 				Username string `json:"username"`
 			} `json:"owner"`
@@ -146,7 +147,6 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 			if !ok {
 				return nil, fmt.Errorf("platform returned a repo with an unaccepted clone URL: %s", repo.CloneUrl)
 			}
-			slog.Info("updated clone URL: " + repo.CloneUrl + " -> " + cloneURL)
 
 			output = append(output, schema.Repo{
 				OwnerName: repo.Owner.Username,
@@ -160,6 +160,7 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 				},
 				DefaultBranch: repo.DefaultBranch,
 				Archived:      repo.Archived,
+				Mirror:        repo.Mirror,
 			})
 		}
 

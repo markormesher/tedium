@@ -20,6 +20,7 @@ type Repo struct {
 	Auth          RepoAuth
 	DefaultBranch string
 	Archived      bool
+	Mirror        bool
 }
 
 type RepoAuth struct {

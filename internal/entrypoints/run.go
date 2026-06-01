@@ -110,6 +110,12 @@ func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job) {
 				continue
 			}
 
+			if targetRepo.Mirror {
+				slog.Info("Repo is a mirror - skipping", "repo", targetRepo.FullName())
+				runStats.ReposSkipped++
+				continue
+			}
+
 			if !platformConfig.AcceptsRepo(targetRepo.FullName()) {
 				slog.Info("Repo does not match any filter - skipping", "repo", targetRepo.FullName())
 				runStats.ReposSkipped++
