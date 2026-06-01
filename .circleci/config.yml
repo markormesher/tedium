@@ -154,6 +154,7 @@ workflows:
             - checkout
             - fetch-task
             - imgrefs
+            - lint-go
           filters:
             tags:
               only: /.*/
