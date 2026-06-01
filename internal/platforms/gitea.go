@@ -84,10 +84,10 @@ func (p *GiteaPlatform) AcceptsURL(url string) (string, bool) {
 		return "", false
 	}
 
-	for _, url := range p.baseURLs {
-		if urlParsed.Scheme == url.Scheme && urlParsed.Host == url.Host {
-			urlParsed.Scheme = url.Scheme
-			urlParsed.Host = url.Host
+	for _, baseURL := range p.baseURLs {
+		if urlParsed.Scheme == baseURL.Scheme && urlParsed.Host == baseURL.Host {
+			urlParsed.Scheme = p.baseURLs[0].Scheme
+			urlParsed.Host = p.baseURLs[0].Host
 			return urlParsed.String(), true
 		}
 	}
