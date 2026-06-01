@@ -39,5 +39,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	slog.Info("Tedium version: " + conf.Version)
+
 	entrypoints.Run(conf)
 }
