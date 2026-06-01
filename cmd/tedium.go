@@ -12,6 +12,8 @@ import (
 var version string // populated via ldflags
 
 func main() {
+	slog.Info("Tedium version: " + version)
+
 	internalCommand := flag.String("internal-command", "", "Internal command to perform when Tedium is running itself inside an executor")
 	configFilePath := flag.String("config", "", "Path to configuration file")
 	flag.Parse()
@@ -38,8 +40,6 @@ func main() {
 		slog.Error("Error loading configuration", "error", err)
 		os.Exit(1)
 	}
-
-	slog.Info("Tedium version: " + conf.Version)
 
 	entrypoints.Run(conf)
 }
