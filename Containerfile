@@ -10,7 +10,7 @@ COPY ./.git ./.git
 COPY ./cmd ./cmd
 COPY ./internal ./internal
 
-RUN go build -tags remote -ldflags "-X 'cmd.version=$(git describe --tags)'" -o ./build/main ./cmd
+RUN go build -tags remote -ldflags "-X 'main.version=$(git describe --tags)'" -o ./build/main ./cmd
 
 # ---
 

@@ -67,7 +67,7 @@ func Run(conf schema.TediumConfig) {
 func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job) {
 	// init ALL platforms before trying to use ANY of them
 	for _, platformConfig := range conf.Platforms {
-		slog.Info("Initialising platform", "domain", platformConfig.Domain)
+		slog.Info("Initialising platform", "baseUrl", platformConfig.BaseURL)
 		platform, err := platforms.FromConfig(conf, platformConfig)
 		if err != nil {
 			slog.Error("Error initialising platform", "error", err)
@@ -82,10 +82,10 @@ func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job) {
 	}
 
 	for _, platformConfig := range conf.Platforms {
-		platform := platforms.FromDomain(platformConfig.Domain)
+		platform := platforms.FromURL(platformConfig.BaseURL)
 		if platform == nil {
 			// this shouldn't ever happen
-			slog.Error("Unable to retrieve existing platform by domain", "domain", platformConfig.Domain)
+			slog.Error("Unable to retrieve existing platform by base URL", "baseUrl", platformConfig.BaseURL)
 			os.Exit(1)
 		}
 
@@ -106,6 +106,12 @@ func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job) {
 		for _, targetRepo := range allRepos {
 			if targetRepo.Archived {
 				slog.Info("Repo is archived - skipping", "repo", targetRepo.FullName())
+				runStats.ReposSkipped++
+				continue
+			}
+
+			if targetRepo.Mirror {
+				slog.Info("Repo is a mirror - skipping", "repo", targetRepo.FullName())
 				runStats.ReposSkipped++
 				continue
 			}
@@ -153,14 +159,14 @@ func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job) {
 
 	// de-init platforms after ALL of them are finished with
 	for _, platformConfig := range conf.Platforms {
-		platform := platforms.FromDomain(platformConfig.Domain)
+		platform := platforms.FromURL(platformConfig.BaseURL)
 		if platform == nil {
 			// this shouldn't ever happen
-			slog.Error("Unable to retrieve existing platform by domain", "domain", platformConfig.Domain)
+			slog.Error("Unable to retrieve existing platform by base URL", "baseUrl", platformConfig.BaseURL)
 			os.Exit(1)
 		}
 
-		slog.Info("De-initialising platform", "domain", platformConfig.Domain)
+		slog.Info("De-initialising platform", "baseUrl", platformConfig.BaseURL)
 		err := platform.Deinit()
 		if err != nil {
 			slog.Error("Error de-initialising platform", "error", err)

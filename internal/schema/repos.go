@@ -12,7 +12,6 @@ import (
 // Repo represents a real Git repo, which may be either a remote repo from which chores or config are read, or a target repo cloned to disk.
 type Repo struct {
 	// present for all repos
-	Domain    string
 	OwnerName string
 	Name      string
 
@@ -21,6 +20,7 @@ type Repo struct {
 	Auth          RepoAuth
 	DefaultBranch string
 	Archived      bool
+	Mirror        bool
 }
 
 type RepoAuth struct {
@@ -45,7 +45,6 @@ func RepoFromUrl(repoUrl string) (Repo, error) {
 		return Repo{}, fmt.Errorf("error parsing repo URL: %w", err)
 	}
 
-	domain := urlParsed.Host
 	path := strings.Trim(urlParsed.Path, "/")
 	pathSegments := strings.Split(path, "/")
 	if len(pathSegments) != 2 {
@@ -53,7 +52,6 @@ func RepoFromUrl(repoUrl string) (Repo, error) {
 	}
 
 	return Repo{
-		Domain:    domain,
 		OwnerName: pathSegments[0],
 		Name:      strings.TrimSuffix(pathSegments[1], ".git"),
 	}, nil

@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log/slog"
-	"slices"
+	urllib "net/url"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/markormesher/tedium/internal/schema"
@@ -15,32 +15,44 @@ type GiteaPlatform struct {
 	schema.PlatformConfig
 
 	// supplied via config
-	domain       string
-	aliasDomains []string
-	auth         *schema.AuthConfig
+	baseURLs []*urllib.URL
+	auth     *schema.AuthConfig
 
 	// generated locally
-	apiBaseUrl string
+	apiBaseUrl *urllib.URL
 	profile    schema.PlatformProfile
 }
 
 func giteaPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) (*GiteaPlatform, error) {
 	if platformConfig.Auth != nil && platformConfig.Auth.Type != schema.AuthConfigTypeUserToken {
-		return nil, fmt.Errorf("cannot construct Gitea platform with auth type other than user token (domain: %s)", platformConfig.Domain)
+		return nil, fmt.Errorf("cannot construct Gitea platform with auth type other than user token (platform: %s)", platformConfig.BaseURL)
 	}
 
-	if platformConfig.Protocol == "" {
-		platformConfig.Protocol = "https"
-	}
-
-	return &GiteaPlatform{
+	p := GiteaPlatform{
 		PlatformConfig: platformConfig,
+		auth:           platformConfig.Auth,
+	}
 
-		domain:       platformConfig.Domain,
-		aliasDomains: platformConfig.AliasDomains,
-		auth:         platformConfig.Auth,
-		apiBaseUrl:   fmt.Sprintf("%s://%s/api/v1", platformConfig.Protocol, platformConfig.Domain),
-	}, nil
+	// normalise primary base URL
+	urlParsed, err := urllib.Parse(platformConfig.BaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid base URL: %w", err)
+	}
+	p.baseURLs = []*urllib.URL{urlParsed}
+
+	// generate API URL
+	p.apiBaseUrl = urlParsed.JoinPath("/api/v1")
+
+	// normalise alternate base URLs
+	for _, u := range platformConfig.AlternateBaseURLs {
+		urlParsed, err := urllib.Parse(u)
+		if err != nil {
+			return nil, fmt.Errorf("invalid alternate base URL: %w", err)
+		}
+		p.baseURLs = append(p.baseURLs, urlParsed)
+	}
+
+	return &p, nil
 }
 
 // interface methods
@@ -62,12 +74,25 @@ func (p *GiteaPlatform) Config() schema.PlatformConfig {
 	return p.PlatformConfig
 }
 
-func (p *GiteaPlatform) ApiBaseUrl() string {
+func (p *GiteaPlatform) ApiBaseUrl() *urllib.URL {
 	return p.apiBaseUrl
 }
 
-func (p *GiteaPlatform) AcceptsDomain(domain string) bool {
-	return domain == p.domain || slices.Contains(p.aliasDomains, domain)
+func (p *GiteaPlatform) AcceptsURL(url string) (string, bool) {
+	urlParsed, err := urllib.Parse(url)
+	if err != nil {
+		return "", false
+	}
+
+	for _, baseURL := range p.baseURLs {
+		if urlParsed.Scheme == baseURL.Scheme && urlParsed.Host == baseURL.Host {
+			urlParsed.Scheme = p.baseURLs[0].Scheme
+			urlParsed.Host = p.baseURLs[0].Host
+			return urlParsed.String(), true
+		}
+	}
+
+	return "", false
 }
 
 func (p *GiteaPlatform) Profile() schema.PlatformProfile {
@@ -84,7 +109,7 @@ func (p *GiteaPlatform) AuthToken() string {
 
 func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	if p.auth == nil {
-		slog.Warn("No auth configured for paltform; skipping repo discovery", "domain", p.domain)
+		slog.Warn("no auth configured for paltform; skipping repo discovery", "baseURL", p.baseURLs[0])
 		return []schema.Repo{}, nil
 	}
 
@@ -94,6 +119,7 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 			CloneUrl      string `json:"clone_url"`
 			DefaultBranch string `json:"default_branch"`
 			Archived      bool   `json:"archived"`
+			Mirror        bool   `json:"mirror"`
 			Owner         struct {
 				Username string `json:"username"`
 			} `json:"owner"`
@@ -117,12 +143,16 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 		}
 
 		for _, repo := range repoData.Data {
+			cloneURL, ok := p.AcceptsURL(repo.CloneUrl)
+			if !ok {
+				return nil, fmt.Errorf("platform returned a repo with an unaccepted clone URL: %s", repo.CloneUrl)
+			}
+
 			output = append(output, schema.Repo{
-				Domain:    p.domain,
 				OwnerName: repo.Owner.Username,
 				Name:      repo.Name,
 
-				CloneUrl: repo.CloneUrl,
+				CloneUrl: cloneURL,
 				Auth: schema.RepoAuth{
 					// TODO: don't forget to set this properly when app auth is supported
 					Username: "x-access-token",
@@ -130,6 +160,7 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 				},
 				DefaultBranch: repo.DefaultBranch,
 				Archived:      repo.Archived,
+				Mirror:        repo.Mirror,
 			})
 		}
 

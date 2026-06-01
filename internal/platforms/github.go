@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log/slog"
-	"slices"
+	urllib "net/url"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/markormesher/tedium/internal/schema"
@@ -15,28 +15,42 @@ type GitHubPlatform struct {
 	schema.PlatformConfig
 
 	// supplied via config
-	domain       string
-	aliasDomains []string
-	auth         *schema.AuthConfig
+	baseURLs []*urllib.URL
+	auth     *schema.AuthConfig
 
 	// generated locally
-	apiBaseUrl string
+	apiBaseUrl *urllib.URL
 	profile    schema.PlatformProfile
 }
 
 func githubPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) (*GitHubPlatform, error) {
-	if platformConfig.Protocol == "" {
-		platformConfig.Protocol = "https"
+	p := GitHubPlatform{
+		PlatformConfig: platformConfig,
+		auth:           platformConfig.Auth,
 	}
 
-	return &GitHubPlatform{
-		PlatformConfig: platformConfig,
+	// normalise primary base URL
+	urlParsed, err := urllib.Parse(platformConfig.BaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid base URL: %w", err)
+	}
+	p.baseURLs = []*urllib.URL{urlParsed}
 
-		domain:       platformConfig.Domain,
-		aliasDomains: platformConfig.AliasDomains,
-		auth:         platformConfig.Auth,
-		apiBaseUrl:   fmt.Sprintf("%s://api.%s", platformConfig.Protocol, platformConfig.Domain),
-	}, nil
+	// generate API URL
+	apiBaseURL := urlParsed.JoinPath("")
+	apiBaseURL.Host = "api." + apiBaseURL.Host
+	p.apiBaseUrl = apiBaseURL
+
+	// normalise alternate base URLs
+	for _, u := range platformConfig.AlternateBaseURLs {
+		urlParsed, err := urllib.Parse(u)
+		if err != nil {
+			return nil, fmt.Errorf("invalid alternate base URL: %w", err)
+		}
+		p.baseURLs = append(p.baseURLs, urlParsed)
+	}
+
+	return &p, nil
 }
 
 // interface methods
@@ -58,12 +72,25 @@ func (p *GitHubPlatform) Config() schema.PlatformConfig {
 	return p.PlatformConfig
 }
 
-func (p *GitHubPlatform) ApiBaseUrl() string {
+func (p *GitHubPlatform) ApiBaseUrl() *urllib.URL {
 	return p.apiBaseUrl
 }
 
-func (p *GitHubPlatform) AcceptsDomain(domain string) bool {
-	return domain == p.domain || slices.Contains(p.aliasDomains, domain)
+func (p *GitHubPlatform) AcceptsURL(url string) (string, bool) {
+	urlParsed, err := urllib.Parse(url)
+	if err != nil {
+		return "", false
+	}
+
+	for _, url := range p.baseURLs {
+		if urlParsed.Scheme == url.Scheme && urlParsed.Host == url.Host {
+			urlParsed.Scheme = url.Scheme
+			urlParsed.Host = url.Host
+			return urlParsed.String(), true
+		}
+	}
+
+	return "", false
 }
 
 func (p *GitHubPlatform) Profile() schema.PlatformProfile {
@@ -89,7 +116,7 @@ func (p *GitHubPlatform) AuthToken() string {
 
 func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	if p.auth == nil {
-		slog.Warn("No auth configured for paltform; skipping repo discovery", "domain", p.domain)
+		slog.Warn("no auth configured for paltform; skipping repo discovery", "baseURL", p.baseURLs)
 		return []schema.Repo{}, nil
 	}
 
@@ -126,12 +153,16 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 			}
 
 			for _, repo := range repoData {
+				cloneURL, ok := p.AcceptsURL(repo.CloneUrl)
+				if !ok {
+					return nil, fmt.Errorf("platform returned a repo with an unaccepted clone URL: %s", repo.CloneUrl)
+				}
+
 				output = append(output, schema.Repo{
-					Domain:    p.domain,
 					OwnerName: repo.Owner.Username,
 					Name:      repo.Name,
 
-					CloneUrl: repo.CloneUrl,
+					CloneUrl: cloneURL,
 					Auth: schema.RepoAuth{
 						Username: "x-access-token",
 						Password: p.auth.Token,
@@ -185,12 +216,16 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 			}
 
 			for _, repo := range repoData.Repos {
+				cloneURL, ok := p.AcceptsURL(repo.CloneUrl)
+				if !ok {
+					return nil, fmt.Errorf("platform returned a repo with an unaccepted clone URL: %s", repo.CloneUrl)
+				}
+
 				output = append(output, schema.Repo{
-					Domain:    p.domain,
 					OwnerName: repo.Owner.Username,
 					Name:      repo.Name,
 
-					CloneUrl: repo.CloneUrl,
+					CloneUrl: cloneURL,
 					Auth: schema.RepoAuth{
 						Username: "x-access-token",
 						Password: p.auth.AppInstallationToken,
