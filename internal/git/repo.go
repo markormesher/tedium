@@ -103,6 +103,7 @@ func CommitIfChanged(job schema.Job, profile schema.PlatformProfile) (bool, erro
 	_, err = worktree.Commit(job.Chore.CommitMessage(), &git.CommitOptions{
 		All: true,
 		Author: &object.Signature{
+			Name:  "Tedium",
 			Email: profile.Email,
 			When:  time.Now(),
 		},
