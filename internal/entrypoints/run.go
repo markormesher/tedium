@@ -175,7 +175,7 @@ func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job) {
 	}
 }
 
-func executeJob(conf schema.TediumConfig, executor schema.Executor, job schema.Job) {
+func executeJob(conf schema.TediumConfig, executor *executors.KubernetesExecutor, job schema.Job) {
 	runStats.JobsDiscovered++
 
 	platform, err := platforms.FromConfig(conf, job.PlatformConfig)

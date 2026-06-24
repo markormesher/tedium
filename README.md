@@ -131,10 +131,6 @@ images:
   # Optional, defaults to latest.
   tedium: "ghcr.io/markormesher/tedium:v0.1.2"
 
-  # Placeholder image used by the Kubernetes executor.
-  # Optional, defaults to latest.
-  pause: "ghcr.io/markormesher/tedium-pause:v0.1.2"
-
 # Auto-enrollment settings for discovered repos that don't already have a repo configuration file.
 # Optional, defaults to disabled.
 autoEnrollment:

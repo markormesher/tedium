@@ -26,7 +26,6 @@ type TediumConfig struct {
 	// Images defines the container images used for Tedium-owned stages of execution
 	Images struct {
 		Tedium string `json:"tedium" yaml:"tedium"`
-		Pause  string `json:"pause" yaml:"pause"`
 	} `json:"images" yaml:"images"`
 
 	// AutoEnrollment defines the Tedium config to apply to repos that don't already have one.
@@ -94,10 +93,6 @@ func LoadTediumConfig(configFilePath string, version string) (TediumConfig, erro
 
 	if version != "" {
 		conf.Version = version
-	}
-
-	if conf.Images.Pause == "" {
-		conf.Images.Pause = "ghcr.io/markormesher/tedium-pause:latest"
 	}
 
 	if conf.Images.Tedium == "" {

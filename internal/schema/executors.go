@@ -22,11 +22,6 @@ type KubernetesExecutorConfig struct {
 	Namespace string `json:"namespace" yaml:"namespace"`
 }
 
-type Executor interface {
-	Init(conf TediumConfig) error
-	ExecuteChore(job Job) error
-}
-
 // ExecutionStep decouples the definition of a ChoreStep from the actual execution.
 type ExecutionStep struct {
 	Image   string `json:"image" yaml:"image"`
