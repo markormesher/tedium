@@ -1,4 +1,4 @@
-package kubernetes
+package executors
 
 import (
 	"context"
@@ -32,15 +32,15 @@ type KubernetesExecutor struct {
 	podClient corev1.PodInterface
 }
 
-func FromConfig(c schema.KubernetesExecutorConfig) (*KubernetesExecutor, error) {
-	namespace := c.Namespace
+func FromConfig(c schema.ExecutorConfig) (*KubernetesExecutor, error) {
+	namespace := c.Kubernetes.Namespace
 	if namespace == "" {
 		slog.Warn("Kubernetes executor namespace was blank - using 'default'")
 		namespace = "default"
 	}
 
 	return &KubernetesExecutor{
-		KubeconfigPath: c.KubeconfigPath,
+		KubeconfigPath: c.Kubernetes.KubeconfigPath,
 		Namespace:      namespace,
 	}, nil
 }

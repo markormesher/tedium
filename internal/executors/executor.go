@@ -5,23 +5,9 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/markormesher/tedium/internal/executors/kubernetes"
-	"github.com/markormesher/tedium/internal/executors/podman"
 	"github.com/markormesher/tedium/internal/platforms"
 	"github.com/markormesher/tedium/internal/schema"
 )
-
-func FromExecutorConfig(ec schema.ExecutorConfig) (schema.Executor, error) {
-	switch {
-	case ec.Podman != nil:
-		return podman.FromConfig(*ec.Podman)
-
-	case ec.Kubernetes != nil:
-		return kubernetes.FromConfig(*ec.Kubernetes)
-	}
-
-	return nil, fmt.Errorf("no executor specified")
-}
 
 func PrepareJob(platform platforms.Platform, job schema.Job) (schema.Job, error) {
 	tediumImage := job.Config.Images.Tedium

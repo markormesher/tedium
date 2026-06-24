@@ -11,13 +11,7 @@ import (
 
 // ExecutorConfig defines the executor used to perform chores.
 type ExecutorConfig struct {
-	Podman     *PodmanExecutorConfig     `json:"podman" yaml:"podman"`
 	Kubernetes *KubernetesExecutorConfig `json:"kubernetes" yaml:"kubernetes"`
-}
-
-type PodmanExecutorConfig struct {
-	// SocketPath identifies the socket used to communicate with Podman. If not supplied, several default values will be tried.
-	SocketPath string `json:"socketPath" yaml:"socketPath"`
 }
 
 type KubernetesExecutorConfig struct {
@@ -53,7 +47,7 @@ type Job struct {
 	FinalBranchName string
 }
 
-// ToEnvironment() bundles the Job into a single environment variable that can be unpacked later by the init and finalise stages of an execution.
+// ToEnvironment bundles the Job into a single environment variable that can be unpacked later by the init and finalise stages of an execution.
 func (job *Job) ToEnvironment() (map[string]string, error) {
 	jobStrBytes, err := json.Marshal(job)
 	if err != nil {

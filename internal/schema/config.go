@@ -114,8 +114,8 @@ func LoadTediumConfig(configFilePath string, version string) (TediumConfig, erro
 
 	// sanity checks
 
-	if conf.Executor.Podman != nil && conf.Executor.Kubernetes != nil {
-		return TediumConfig{}, fmt.Errorf("invalid Tedium config: more than one executor configured")
+	if conf.Executor.Kubernetes == nil {
+		return TediumConfig{}, fmt.Errorf("invalid Tedium config: executor not configured")
 	}
 
 	urlsSeen := map[string]bool{}

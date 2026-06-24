@@ -24,7 +24,7 @@ var runStats = &RunStats{}
 func Run(conf schema.TediumConfig) {
 	// setup the executor (this is cheap, it doesn't matter if we end up having no chores)
 	slog.Info("Initialising executor")
-	executor, err := executors.FromExecutorConfig(conf.Executor)
+	executor, err := executors.FromConfig(conf.Executor)
 	if err != nil {
 		slog.Error("Could not initialise executor", "error", err)
 		os.Exit(1)

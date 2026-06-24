@@ -2,7 +2,7 @@
 
 # Tedium
 
-Tedium is a tool to automate the execution of boring or repetitive tasks, called "chores", across all of your Git repos. All chores run in containers, providing complete control over the tooling available. If running a chore against a repo results in changes, Tedium will push those changes on a branch and open or update a PR for you.
+Tedium is a K8s-based tool to automate the execution of boring or repetitive tasks, called "chores", across all of your Git repos. All chores run in containers, providing complete control over the tooling available. If running a chore against a repo results in changes, Tedium will push those changes on a branch and open or update a PR for you.
 
 ## 💻 Usage
 
@@ -29,19 +29,13 @@ go run -tags remote ./cmd/tedium.go --config ./config.yml
 
 ## 📖 Concepts
 
-There are a few key concepts within Tedium: chores, executors, and platforms.
+There are two key concepts within Tedium: chores and platforms.
 
 ### Chores
 
 Chores are the boring, repeatable tasks that Tedium runs for you. Tedium will execute chores against your repos, and if they cause any changes to the repo it will commit them to a branch and open or update a PR.
 
 Running chores is the entire point of Tedium, so see [Chores](#-chores) below for lots more detail.
-
-### Executors
-
-Executors are the container orchestrators that Tedium uses to clone your repos, actually run your chores, and push any changes.
-
-The primary executor is Kubernetes, as Tedium is designed to run on a regular cadence with something like a [Kubernetes CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs), but Podman is also supported for local execution.
 
 ### Platforms
 
@@ -81,16 +75,9 @@ Runtime configuration is provided to Tedium on the command line when it is execu
 The full schema of runtime configuration is defined in [schema/config.go](./internal/schema/config.go) as `TediumConfig`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
 
 ```yaml
-# The executor used to execute chores - you must supply ONE value.
+# The executor used to execute chores.
 # Required.
 executor:
-
-  # If you're running chores locally with Podman:
-  podman:
-    # Optional, several defaults will be tried if not supplied.
-    socketPath: "unix:///run/podman/podman.sock"
-
-  # If you're running chores in a Kubernetes cluster:
   kubernetes:
     # Required when running the executor locally, optional when running it inside the cluster.
     kubeConfigPath: "~/.kube/config"
