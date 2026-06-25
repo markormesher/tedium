@@ -1,5 +1,3 @@
-![CircleCI](https://img.shields.io/circleci/build/github/markormesher/tedium)
-
 # Tedium
 
 Tedium is a K8s-based tool to automate the execution of boring or repetitive tasks, called "chores", across all of your Git repos. All chores run in containers, providing complete control over the tooling available. If running a chore against a repo results in changes, Tedium will push those changes on a branch and open or update a PR for you.
