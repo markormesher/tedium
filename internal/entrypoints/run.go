@@ -49,6 +49,10 @@ func watchEvents(eventQueue <-chan schema.Event) chan struct{} {
 	discoveryFinished := false
 	s := Stats{}
 
+	logProgress := func() {
+		slog.Info("progress", "stats", s)
+	}
+
 	// this is the only routine that modifies the state above, so no locking is needed
 	go func() {
 		for e := range eventQueue {
@@ -76,6 +80,7 @@ func watchEvents(eventQueue <-chan schema.Event) chan struct{} {
 			}
 
 			if discoveryFinished && s.JobsDiscovered == s.JobsSuceeded+s.JobsFailed {
+				logProgress()
 				done <- struct{}{}
 			}
 		}
@@ -84,7 +89,7 @@ func watchEvents(eventQueue <-chan schema.Event) chan struct{} {
 	// regularly print stats
 	go func() {
 		for range time.Tick(time.Second * 10) {
-			slog.Info("progress", "stats", s)
+			logProgress()
 		}
 	}()
 
