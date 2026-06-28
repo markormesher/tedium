@@ -110,7 +110,7 @@ func (e *KubernetesExecutor) executeChore(job schema.Job) error {
 						{
 							Name:    "finish",
 							Image:   e.conf.Images.Tedium,
-							Command: []string{"exit", "0"},
+							Command: []string{"echo"},
 						},
 					},
 					Volumes: []corev1.Volume{
