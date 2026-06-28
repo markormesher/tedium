@@ -88,7 +88,7 @@ func (e *KubernetesExecutor) worker() {
 
 func (e *KubernetesExecutor) executeChore(job schema.Job) error {
 	jobName := utils.UniqueName("executor")
-	pod := &batchv1.Job{
+	k8sJob := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: e.conf.Executor.Kubernetes.Namespace,
 			Name:      jobName,
@@ -102,6 +102,7 @@ func (e *KubernetesExecutor) executeChore(job schema.Job) error {
 			TTLSecondsAfterFinished: new(int32(5 * 60)),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
+					RestartPolicy:                 corev1.RestartPolicyNever,
 					TerminationGracePeriodSeconds: new(int64(0)),
 					Containers: []corev1.Container{
 						{
@@ -138,11 +139,11 @@ func (e *KubernetesExecutor) executeChore(job schema.Job) error {
 			},
 		}
 
-		pod.Spec.Template.Spec.InitContainers = append(pod.Spec.Template.Spec.InitContainers, container)
+		k8sJob.Spec.Template.Spec.InitContainers = append(k8sJob.Spec.Template.Spec.InitContainers, container)
 	}
 
 	// start the job
-	_, err := e.jobClient.Create(k8sExecutorContext, pod, metav1.CreateOptions{})
+	_, err := e.jobClient.Create(k8sExecutorContext, k8sJob, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("error creating execution job: %w", err)
 	}
