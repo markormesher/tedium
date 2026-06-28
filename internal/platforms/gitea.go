@@ -109,7 +109,7 @@ func (p *GiteaPlatform) AuthToken() string {
 
 func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	if p.auth == nil {
-		slog.Warn("no auth configured for paltform; skipping repo discovery", "baseURL", p.baseURLs[0])
+		slog.Warn("no auth configured for platform; skipping repo discovery", "baseURL", p.baseURLs[0])
 		return []schema.Repo{}, nil
 	}
 

@@ -89,18 +89,18 @@ func (e *KubernetesExecutor) worker() {
 func (e *KubernetesExecutor) executeChore(job schema.Job) error {
 	jobName := utils.UniqueName("executor")
 	k8sJob := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: e.conf.Executor.Kubernetes.Namespace,
-			Name:      jobName,
-			Labels: map[string]string{
-				"app.kubernetes.io/name":      "tedium",
-				"app.kubernetes.io/component": "executor",
-			},
-		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            new(int32(0)),
 			TTLSecondsAfterFinished: new(int32(5 * 60)),
 			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: e.conf.Executor.Kubernetes.Namespace,
+					Name:      jobName,
+					Labels: map[string]string{
+						"app.kubernetes.io/name":      "tedium",
+						"app.kubernetes.io/component": "executor",
+					},
+				},
 				Spec: corev1.PodSpec{
 					RestartPolicy:                 corev1.RestartPolicyNever,
 					TerminationGracePeriodSeconds: new(int64(0)),
