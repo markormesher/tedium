@@ -76,6 +76,11 @@ The full schema of runtime configuration is defined in [schema/config.go](./inte
 # The executor used to execute chores.
 # Required.
 executor:
+  # How many chores to attempt to run at once (upper bound - actual concurrency may be lower).
+  # Optional, defaults to 1.
+  choreConcurrency: 5
+
+  # Details for connecting to and interacting with the Kubernetes cluster.
   kubernetes:
     # Required when running the executor locally, optional when running it inside the cluster.
     kubeConfigPath: "~/.kube/config"
@@ -144,10 +149,6 @@ autoEnrollment:
       - "https://github.com/example/tedium-config-all-repos"
       - "https://github.com/example/tedium-config-go-projects"
     chores: []
-
-# How many chores to attempt to run at once (upper bound - actual concurrency may be lower).
-# Optional, defaults to 1.
-choreConcurrency: 5
 ```
 
 <details>

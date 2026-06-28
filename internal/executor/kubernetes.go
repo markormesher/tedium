@@ -1,9 +1,11 @@
-package executors
+package executor
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
+	"time"
 
 	"github.com/markormesher/tedium/internal/schema"
 	"github.com/markormesher/tedium/internal/utils"
@@ -19,40 +21,35 @@ import (
 var k8sExecutorContext = context.TODO()
 
 type KubernetesExecutor struct {
-	KubeconfigPath string
-	Namespace      string
+	conf       schema.TediumConfig
+	jobQueue   <-chan schema.Job
+	eventQueue chan<- schema.Event
 
-	// private state
-	conf      schema.TediumConfig
 	jobClient batchclients.JobInterface
 }
 
-func FromConfig(c schema.ExecutorConfig) (*KubernetesExecutor, error) {
-	namespace := c.Kubernetes.Namespace
-	if namespace == "" {
+func CreateAndStart(conf schema.TediumConfig, jobQueue <-chan schema.Job, eventQueue chan<- schema.Event) error {
+	if conf.Executor.Kubernetes.Namespace == "" {
 		slog.Warn("Kubernetes executor namespace was blank - using 'default'")
-		namespace = "default"
+		conf.Executor.Kubernetes.Namespace = "default"
 	}
 
-	return &KubernetesExecutor{
-		KubeconfigPath: c.Kubernetes.KubeconfigPath,
-		Namespace:      namespace,
-	}, nil
-}
-
-func (executor *KubernetesExecutor) Init(conf schema.TediumConfig) error {
-	executor.conf = conf
+	e := KubernetesExecutor{
+		conf:       conf,
+		jobQueue:   jobQueue,
+		eventQueue: eventQueue,
+	}
 
 	var kubeConfig *rest.Config
 	var err error
 
-	if executor.KubeconfigPath != "" {
-		kubeConfig, err = clientcmd.BuildConfigFromFlags("", executor.KubeconfigPath)
+	if e.conf.Executor.Kubernetes.KubeconfigPath != "" {
+		kubeConfig, err = clientcmd.BuildConfigFromFlags("", e.conf.Executor.Kubernetes.KubeconfigPath)
 		if err != nil {
 			return fmt.Errorf("error creating Kube config from provided path: %w", err)
 		}
 	} else {
-		slog.Info("No kubeconfig path provided - attempting to use in-cluster config")
+		slog.Info("no kubeconfig path provided - attempting to use in-cluster config")
 		kubeConfig, err = rest.InClusterConfig()
 		if err != nil {
 			return fmt.Errorf("error creating Kube config in-cluster config: %w", err)
@@ -64,16 +61,36 @@ func (executor *KubernetesExecutor) Init(conf schema.TediumConfig) error {
 		return fmt.Errorf("error creating new Kubernetes client: %w", err)
 	}
 
-	executor.jobClient = clientSet.BatchV1().Jobs(executor.Namespace)
+	e.jobClient = clientSet.BatchV1().Jobs(e.conf.Executor.Kubernetes.Namespace)
+
+	// start workers
+	workerWg := sync.WaitGroup{}
+	for range conf.Executor.ChoreConcurrency {
+		workerWg.Go(func() { e.worker() })
+	}
 
 	return nil
 }
 
-func (executor *KubernetesExecutor) ExecuteChore(job schema.Job) error {
+func (e *KubernetesExecutor) worker() {
+	for job := range e.jobQueue {
+		err := e.executeChore(job)
+		if err != nil {
+			slog.Error("chore failed", "repo", job.Repo.Name, "chore", job.Chore.Name, "error", err)
+			e.eventQueue <- schema.JobFailed
+		} else {
+			e.eventQueue <- schema.JobSucceeded
+		}
+
+		time.Sleep(5 * time.Second)
+	}
+}
+
+func (e *KubernetesExecutor) executeChore(job schema.Job) error {
 	jobName := utils.UniqueName("executor")
 	pod := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: executor.Namespace,
+			Namespace: e.conf.Executor.Kubernetes.Namespace,
 			Name:      jobName,
 			Labels: map[string]string{
 				"app.kubernetes.io/name":      "tedium",
@@ -89,7 +106,7 @@ func (executor *KubernetesExecutor) ExecuteChore(job schema.Job) error {
 					Containers: []corev1.Container{
 						{
 							Name:    "finish",
-							Image:   executor.conf.Images.Tedium,
+							Image:   e.conf.Images.Tedium,
 							Command: []string{"exit", "0"},
 						},
 					},
@@ -125,10 +142,12 @@ func (executor *KubernetesExecutor) ExecuteChore(job schema.Job) error {
 	}
 
 	// start the job
-	_, err := executor.jobClient.Create(k8sExecutorContext, pod, metav1.CreateOptions{})
+	_, err := e.jobClient.Create(k8sExecutorContext, pod, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("error creating execution job: %w", err)
 	}
+
+	// TODO: track job to completion
 
 	return nil
 }

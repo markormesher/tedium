@@ -33,9 +33,6 @@ type TediumConfig struct {
 		Enabled bool       `json:"enabled" yaml:"enabled"`
 		Config  RepoConfig `json:"config" yaml:"config"`
 	} `json:"autoEnrollment" yaml:"autoEnrollment"`
-
-	// ChoreConcurrency defines how many chores Tedium should attempt to run concurrently. It is an upper bound and may not be reached. Defaults to 1.
-	ChoreConcurrency int `json:"choreConcurrency" yaml:"choreConcurrency"`
 }
 
 // RepoConfig is read from a target repo. The main purpose is to define which chores are to be applied.
@@ -103,15 +100,11 @@ func LoadTediumConfig(configFilePath string, version string) (TediumConfig, erro
 		}
 	}
 
-	if conf.ChoreConcurrency < 1 {
-		conf.ChoreConcurrency = 1
+	if conf.Executor.ChoreConcurrency < 1 {
+		conf.Executor.ChoreConcurrency = 1
 	}
 
 	// sanity checks
-
-	if conf.Executor.Kubernetes == nil {
-		return TediumConfig{}, fmt.Errorf("invalid Tedium config: executor not configured")
-	}
 
 	urlsSeen := map[string]bool{}
 	for _, platform := range conf.Platforms {

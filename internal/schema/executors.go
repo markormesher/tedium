@@ -11,10 +11,14 @@ import (
 
 // ExecutorConfig defines the executor used to perform chores.
 type ExecutorConfig struct {
-	Kubernetes *KubernetesExecutorConfig `json:"kubernetes" yaml:"kubernetes"`
+	// ChoreConcurrency defines how many chores Tedium should attempt to run concurrently. It is an upper bound and may not be reached. Defaults to 1.
+	ChoreConcurrency int `json:"concurrency" yaml:"concurrency"`
+
+	// Kubernetes defines how to connect to the Kubernetes cluster for chore execution.
+	Kubernetes KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
 }
 
-type KubernetesExecutorConfig struct {
+type KubernetesConfig struct {
 	// KubeconfigPath locates the configuration used to communicate with Kubernetes. If not supplied, the executable will assume it is running inside Kubernetes and will attempt to use the in-cluster config.
 	KubeconfigPath string `json:"kubeconfigPath" yaml:"kubeconfigPath"`
 
