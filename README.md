@@ -1,8 +1,8 @@
-![CircleCI](https://img.shields.io/circleci/build/github/markormesher/tedium)
-
 # Tedium
 
-Tedium is a tool to automate the execution of boring or repetitive tasks, called "chores", across all of your Git repos. All chores run in containers, providing complete control over the tooling available. If running a chore against a repo results in changes, Tedium will push those changes on a branch and open or update a PR for you.
+Tedium is a K8s-based tool to automate the execution of boring or repetitive tasks, called "chores", across all of your Git repos. All chores run in containers, providing complete control over the tooling available. If running a chore against a repo results in changes, Tedium will push those changes on a branch and open or update a PR for you.
+
+:warning: Note - until this tool hits v1.x, there may be some breaking changes in config and functionality. Check changes before upgrading - you have been warned!
 
 ## 💻 Usage
 
@@ -29,19 +29,13 @@ go run -tags remote ./cmd/tedium.go --config ./config.yml
 
 ## 📖 Concepts
 
-There are a few key concepts within Tedium: chores, executors, and platforms.
+There are two key concepts within Tedium: chores and platforms.
 
 ### Chores
 
 Chores are the boring, repeatable tasks that Tedium runs for you. Tedium will execute chores against your repos, and if they cause any changes to the repo it will commit them to a branch and open or update a PR.
 
 Running chores is the entire point of Tedium, so see [Chores](#-chores) below for lots more detail.
-
-### Executors
-
-Executors are the container orchestrators that Tedium uses to clone your repos, actually run your chores, and push any changes.
-
-The primary executor is Kubernetes, as Tedium is designed to run on a regular cadence with something like a [Kubernetes CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs), but Podman is also supported for local execution.
 
 ### Platforms
 
@@ -81,16 +75,14 @@ Runtime configuration is provided to Tedium on the command line when it is execu
 The full schema of runtime configuration is defined in [schema/config.go](./internal/schema/config.go) as `TediumConfig`. An example is provided below, but **do not copy this as-is** - you will need to change it before it can be used.
 
 ```yaml
-# The executor used to execute chores - you must supply ONE value.
+# The executor used to execute chores.
 # Required.
 executor:
+  # How many chores to attempt to run at once (upper bound - actual concurrency may be lower).
+  # Optional, defaults to 1.
+  choreConcurrency: 5
 
-  # If you're running chores locally with Podman:
-  podman:
-    # Optional, several defaults will be tried if not supplied.
-    socketPath: "unix:///run/podman/podman.sock"
-
-  # If you're running chores in a Kubernetes cluster:
+  # Details for connecting to and interacting with the Kubernetes cluster.
   kubernetes:
     # Required when running the executor locally, optional when running it inside the cluster.
     kubeConfigPath: "~/.kube/config"
@@ -108,9 +100,15 @@ platforms:
     # Required.
   - type: "gitea"
 
-    # Platform domain. Don't include any path segments. For GitHub instances, do not include the "api." subdomain.
+    # Platform base URL. Don't include any path segments. For GitHub instances, do not include the "api." subdomain.
     # Required.
-    domain: "gitea.example.com"
+    baseUrl: "https://gitea.example.com"
+
+    # Alternate base URLs for this platform. Useful if you host an internal mirror or access a platform from multiple URLs.
+    # If any target repo or chore uses one of these URLs, it will be rewritten to use the base URL above.
+    # Optional.
+    alternateBaseURLs:
+      - "http://gitea-mirror.example.lan:3000"
 
     # List of regexes to filter repos against during discovery.
     # Repos matching any filter will be included.
@@ -135,12 +133,8 @@ platforms:
 images:
 
   # Tedium image used for pre- and post-chore steps.
-  # Optional, defaults to the latest tag within the same major version.
-  tedium: "ghcr.io/markormesher/tedium:v0"
-
-  # Placeholder image used by the Kubernetes executor.
-  # Optional, defaults to the latest tag within the same major version.
-  pause: "ghcr.io/markormesher/tedium-pause:v0"
+  # Optional, defaults to latest.
+  tedium: "ghcr.io/markormesher/tedium:v0.1.2"
 
 # Auto-enrollment settings for discovered repos that don't already have a repo configuration file.
 # Optional, defaults to disabled.
@@ -157,10 +151,6 @@ autoEnrollment:
       - "https://github.com/example/tedium-config-all-repos"
       - "https://github.com/example/tedium-config-go-projects"
     chores: []
-
-# How many chores to attempt to run at once (upper bound - actual concurrency may be lower).
-# Optional, defaults to 1.
-choreConcurrency: 5
 ```
 
 <details>
@@ -205,7 +195,7 @@ extends:
 
 # Chores to execute against this repo.
 # Each chore is defined as a Git repo URL and a directory within that repo, plus extra optional configuration as below.
-# If a chore has the same URL and domain as one discovered from the `extends` config above their definitions will be merged.
+# If a chore has the same URL and directory as one discovered from the `extends` config above their definitions will be merged.
 # Optional.
 chores:
   - url: "https://github.com/example/my-tedium-chores",

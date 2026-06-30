@@ -2,7 +2,7 @@ package utils
 
 import "path/filepath"
 
-func AddYamlJsonExtensions(root string) []string {
+func AddConfigFileExtensions(root string) []string {
 	return []string{
 		root + ".yml",
 		root + ".yaml",
@@ -10,7 +10,7 @@ func AddYamlJsonExtensions(root string) []string {
 	}
 }
 
-func IsYamlOrJsonFile(path string) bool {
+func HasConfigFileExtension(path string) bool {
 	ext := filepath.Ext(path)
 	return ext == ".yml" || ext == ".yaml" || ext == ".json"
 

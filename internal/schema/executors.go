@@ -11,26 +11,19 @@ import (
 
 // ExecutorConfig defines the executor used to perform chores.
 type ExecutorConfig struct {
-	Podman     *PodmanExecutorConfig     `json:"podman" yaml:"podman"`
-	Kubernetes *KubernetesExecutorConfig `json:"kubernetes" yaml:"kubernetes"`
+	// ChoreConcurrency defines how many chores Tedium should attempt to run concurrently. It is an upper bound and may not be reached. Defaults to 1.
+	ChoreConcurrency int `json:"concurrency" yaml:"concurrency"`
+
+	// Kubernetes defines how to connect to the Kubernetes cluster for chore execution.
+	Kubernetes KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
 }
 
-type PodmanExecutorConfig struct {
-	// SocketPath identifies the socket used to communicate with Podman. If not supplied, several default values will be tried.
-	SocketPath string `json:"socketPath" yaml:"socketPath"`
-}
-
-type KubernetesExecutorConfig struct {
+type KubernetesConfig struct {
 	// KubeconfigPath locates the configuration used to communicate with Kubernetes. If not supplied, the executable will assume it is running inside Kubernetes and will attempt to use the in-cluster config.
 	KubeconfigPath string `json:"kubeconfigPath" yaml:"kubeconfigPath"`
 
 	// Namespace defines where chores are executed. It defaults to "default".
 	Namespace string `json:"namespace" yaml:"namespace"`
-}
-
-type Executor interface {
-	Init(conf TediumConfig) error
-	ExecuteChore(job Job) error
 }
 
 // ExecutionStep decouples the definition of a ChoreStep from the actual execution.
@@ -53,7 +46,7 @@ type Job struct {
 	FinalBranchName string
 }
 
-// ToEnvironment() bundles the Job into a single environment variable that can be unpacked later by the init and finalise stages of an execution.
+// ToEnvironment bundles the Job into a single environment variable that can be unpacked later by the init and finalise stages of an execution.
 func (job *Job) ToEnvironment() (map[string]string, error) {
 	jobStrBytes, err := json.Marshal(job)
 	if err != nil {

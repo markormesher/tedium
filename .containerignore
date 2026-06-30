@@ -1,4 +1,3 @@
-.git/
 build/
 Containerfile
 config*.json

@@ -3,6 +3,8 @@ package platforms
 import (
 	"encoding/base64"
 	"fmt"
+	"log/slog"
+	urllib "net/url"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/markormesher/tedium/internal/schema"
@@ -13,28 +15,48 @@ type GitHubPlatform struct {
 	schema.PlatformConfig
 
 	// supplied via config
-	domain string
-	auth   *schema.AuthConfig
+	baseURLs []*urllib.URL
+	auth     *schema.AuthConfig
 
 	// generated locally
-	apiBaseUrl string
+	apiBaseURL *urllib.URL
 	profile    schema.PlatformProfile
 }
 
-func githubPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) (*GitHubPlatform, error) {
-	return &GitHubPlatform{
+func githubPlatformFromConfig(platformConfig schema.PlatformConfig) (*GitHubPlatform, error) {
+	p := GitHubPlatform{
 		PlatformConfig: platformConfig,
+		auth:           platformConfig.Auth,
+	}
 
-		domain:     platformConfig.Domain,
-		auth:       platformConfig.Auth,
-		apiBaseUrl: fmt.Sprintf("https://api.%s", platformConfig.Domain),
-	}, nil
+	// normalise primary base URL
+	urlParsed, err := urllib.Parse(platformConfig.BaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid base URL: %w", err)
+	}
+	p.baseURLs = []*urllib.URL{urlParsed}
+
+	// generate API URL
+	apiBaseURL := urlParsed.JoinPath("")
+	apiBaseURL.Host = "api." + apiBaseURL.Host
+	p.apiBaseURL = apiBaseURL
+
+	// normalise alternate base URLs
+	for _, u := range platformConfig.AlternateBaseURLs {
+		urlParsed, err := urllib.Parse(u)
+		if err != nil {
+			return nil, fmt.Errorf("invalid alternate base URL: %w", err)
+		}
+		p.baseURLs = append(p.baseURLs, urlParsed)
+	}
+
+	return &p, nil
 }
 
 // interface methods
 
 func (p *GitHubPlatform) Init(conf schema.TediumConfig) error {
-	err := p.loadProfile(conf)
+	err := p.loadProfile()
 	if err != nil {
 		return err
 	}
@@ -50,12 +72,25 @@ func (p *GitHubPlatform) Config() schema.PlatformConfig {
 	return p.PlatformConfig
 }
 
-func (p *GitHubPlatform) ApiBaseUrl() string {
-	return p.apiBaseUrl
+func (p *GitHubPlatform) APIBaseURL() *urllib.URL {
+	return p.apiBaseURL
 }
 
-func (p *GitHubPlatform) AcceptsDomain(domain string) bool {
-	return domain == p.domain
+func (p *GitHubPlatform) AcceptsURL(url string) (string, bool) {
+	urlParsed, err := urllib.Parse(url)
+	if err != nil {
+		return "", false
+	}
+
+	for _, url := range p.baseURLs {
+		if urlParsed.Scheme == url.Scheme && urlParsed.Host == url.Host {
+			urlParsed.Scheme = url.Scheme
+			urlParsed.Host = url.Host
+			return urlParsed.String(), true
+		}
+	}
+
+	return "", false
 }
 
 func (p *GitHubPlatform) Profile() schema.PlatformProfile {
@@ -81,7 +116,7 @@ func (p *GitHubPlatform) AuthToken() string {
 
 func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	if p.auth == nil {
-		l.Warn("No auth configured for paltform; skipping repo discovery", "domain", p.domain)
+		slog.Warn("no auth configured for paltform; skipping repo discovery", "baseURL", p.baseURLs)
 		return []schema.Repo{}, nil
 	}
 
@@ -89,7 +124,7 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	case schema.AuthConfigTypeUserToken:
 		var repoData []struct {
 			Name          string `json:"name"`
-			CloneUrl      string `json:"clone_url"`
+			CloneURL      string `json:"clone_url"`
 			DefaultBranch string `json:"default_branch"`
 			Archived      bool   `json:"archived"`
 			Owner         struct {
@@ -98,7 +133,7 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 		}
 
 		var output []schema.Repo
-		url := fmt.Sprintf("%s/user/repos?page=1&per_page=50", p.apiBaseUrl)
+		url := fmt.Sprintf("%s/user/repos?page=1&per_page=50", p.apiBaseURL)
 
 		for {
 			_, req, err := p.authedUserRequest()
@@ -118,12 +153,16 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 			}
 
 			for _, repo := range repoData {
+				cloneURL, ok := p.AcceptsURL(repo.CloneURL)
+				if !ok {
+					return nil, fmt.Errorf("platform returned a repo with an unaccepted clone URL: %s", repo.CloneURL)
+				}
+
 				output = append(output, schema.Repo{
-					Domain:    p.domain,
 					OwnerName: repo.Owner.Username,
 					Name:      repo.Name,
 
-					CloneUrl: repo.CloneUrl,
+					CloneURL: cloneURL,
 					Auth: schema.RepoAuth{
 						Username: "x-access-token",
 						Password: p.auth.Token,
@@ -147,7 +186,7 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 		var repoData struct {
 			Repos []struct {
 				Name          string `json:"name"`
-				CloneUrl      string `json:"clone_url"`
+				CloneURL      string `json:"clone_url"`
 				DefaultBranch string `json:"default_branch"`
 				Archived      bool   `json:"archived"`
 				Owner         struct {
@@ -157,7 +196,7 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 		}
 
 		var output []schema.Repo
-		url := fmt.Sprintf("%s/installation/repositories?page=1&per_page=50", p.apiBaseUrl)
+		url := fmt.Sprintf("%s/installation/repositories?page=1&per_page=50", p.apiBaseURL)
 
 		for {
 			_, req, err := p.authedInstallationRequest()
@@ -177,12 +216,16 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 			}
 
 			for _, repo := range repoData.Repos {
+				cloneURL, ok := p.AcceptsURL(repo.CloneURL)
+				if !ok {
+					return nil, fmt.Errorf("platform returned a repo with an unaccepted clone URL: %s", repo.CloneURL)
+				}
+
 				output = append(output, schema.Repo{
-					Domain:    p.domain,
 					OwnerName: repo.Owner.Username,
 					Name:      repo.Name,
 
-					CloneUrl: repo.CloneUrl,
+					CloneURL: cloneURL,
 					Auth: schema.RepoAuth{
 						Username: "x-access-token",
 						Password: p.auth.AppInstallationToken,
@@ -208,7 +251,7 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 }
 
 func (p *GitHubPlatform) RepoHasTediumConfig(repo schema.Repo) (bool, error) {
-	file, err := p.ReadRepoFile(repo, "", utils.AddYamlJsonExtensions(".tedium"))
+	file, err := p.ReadRepoFile(repo, "", utils.AddConfigFileExtensions(".tedium"))
 
 	if err != nil {
 		return false, fmt.Errorf("failed to read Tedium file via GitHub API: %w", err)
@@ -233,7 +276,7 @@ func (p *GitHubPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandi
 		}
 
 		req.SetResult(&repoFile)
-		url := fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.apiBaseUrl, repo.OwnerName, repo.Name, path)
+		url := fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.apiBaseURL, repo.OwnerName, repo.Name, path)
 		response, err := req.Get(url)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read file via GitHub API: %w", err)
@@ -259,7 +302,7 @@ func (p *GitHubPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandi
 }
 
 func (p *GitHubPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
-	l.Info("Opening or updating PR", "chore", job.Chore.Name)
+	slog.Info("opening or updating PR", "chore", job.Chore.Name)
 
 	var existingPrs []struct {
 		Num   int    `json:"number"`
@@ -279,7 +322,7 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 	}
 
 	req.SetResult(&existingPrs)
-	response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/pulls", p.apiBaseUrl, job.Repo.OwnerName, job.Repo.Name))
+	response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/pulls", p.apiBaseURL, job.Repo.OwnerName, job.Repo.Name))
 	if err != nil {
 		return fmt.Errorf("error fetching existing PRs: %w", err)
 	}
@@ -296,7 +339,7 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 		}
 	}
 
-	prBody := map[string]interface{}{
+	prBody := map[string]any{
 		"base":  job.Repo.DefaultBranch,
 		"head":  fmt.Sprintf("%s:%s", job.Repo.OwnerName, job.FinalBranchName),
 		"title": job.Chore.PrTitle(),
@@ -312,11 +355,11 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 	req.SetBody(prBody)
 
 	if existingPrNum == 0 {
-		l.Debug("Opening PR")
-		response, err = req.Post(fmt.Sprintf("%s/repos/%s/%s/pulls", p.apiBaseUrl, job.Repo.OwnerName, job.Repo.Name))
+		slog.Debug("opening PR")
+		response, err = req.Post(fmt.Sprintf("%s/repos/%s/%s/pulls", p.apiBaseURL, job.Repo.OwnerName, job.Repo.Name))
 	} else {
-		l.Debug("Updating PR")
-		response, err = req.Patch(fmt.Sprintf("%s/repos/%s/%s/pulls/%d", p.apiBaseUrl, job.Repo.OwnerName, job.Repo.Name, existingPrNum))
+		slog.Debug("updating PR")
+		response, err = req.Patch(fmt.Sprintf("%s/repos/%s/%s/pulls/%d", p.apiBaseURL, job.Repo.OwnerName, job.Repo.Name, existingPrNum))
 	}
 
 	if err != nil {
@@ -332,7 +375,7 @@ func (p *GitHubPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 
 // internal methods
 
-func (p *GitHubPlatform) loadProfile(conf schema.TediumConfig) error {
+func (p *GitHubPlatform) loadProfile() error {
 	if p.auth == nil || p.SkipDiscovery {
 		return nil
 	}
@@ -349,7 +392,7 @@ func (p *GitHubPlatform) loadProfile(conf schema.TediumConfig) error {
 			return fmt.Errorf("error loading user profile: %w", err)
 		}
 		req.SetResult(&userEmails)
-		response, err := req.Get(fmt.Sprintf("%s/user/emails", p.apiBaseUrl))
+		response, err := req.Get(fmt.Sprintf("%s/user/emails", p.apiBaseURL))
 
 		if err != nil {
 			return fmt.Errorf("failed to load user profile: %w", err)
@@ -387,7 +430,7 @@ func (p *GitHubPlatform) loadProfile(conf schema.TediumConfig) error {
 			return fmt.Errorf("error loading app profile: %w", err)
 		}
 		req.SetResult(&appProfile)
-		response, err := req.Get(fmt.Sprintf("%s/app", p.apiBaseUrl))
+		response, err := req.Get(fmt.Sprintf("%s/app", p.apiBaseURL))
 
 		if err != nil {
 			return fmt.Errorf("failed to load app profile: %w", err)
@@ -496,7 +539,7 @@ func (p *GitHubPlatform) authedInstallationRequest() (*resty.Client, *resty.Requ
 			return nil, nil, err
 		}
 		req.SetResult(&installationToken)
-		response, err := req.Post(fmt.Sprintf("%s/app/installations/%s/access_tokens", p.apiBaseUrl, p.auth.InstallationId))
+		response, err := req.Post(fmt.Sprintf("%s/app/installations/%s/access_tokens", p.apiBaseURL, p.auth.InstallationID))
 
 		if err != nil {
 			return nil, nil, fmt.Errorf("error generating installation access token: %w", err)

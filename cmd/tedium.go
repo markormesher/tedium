@@ -2,16 +2,18 @@ package main
 
 import (
 	"flag"
+	"log/slog"
 	"os"
 
 	"github.com/markormesher/tedium/internal/entrypoints"
-	"github.com/markormesher/tedium/internal/logging"
 	"github.com/markormesher/tedium/internal/schema"
 )
 
-var l = logging.Logger
+var version string // populated via ldflags
 
 func main() {
+	slog.Info("tedium version: " + version)
+
 	internalCommand := flag.String("internal-command", "", "Internal command to perform when Tedium is running itself inside an executor")
 	configFilePath := flag.String("config", "", "Path to configuration file")
 	flag.Parse()
@@ -29,13 +31,13 @@ func main() {
 
 	// normal case: user invocation
 	if *configFilePath == "" {
-		l.Error("Config file not provided")
+		slog.Error("config file not provided")
 		os.Exit(1)
 	}
 
-	conf, err := schema.LoadTediumConfig(*configFilePath)
+	conf, err := schema.LoadTediumConfig(*configFilePath, version)
 	if err != nil {
-		l.Error("Error loading configuration", "error", err)
+		slog.Error("error loading configuration", "error", err)
 		os.Exit(1)
 	}
 

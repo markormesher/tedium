@@ -1,26 +1,25 @@
-FROM docker.io/golang:1.26.3@sha256:2981696eed011d747340d7252620932677929cce7d2d539602f56a8d7e9b660b as builder
+FROM docker.io/golang:1.26.4@sha256:68cb6d68bed024785b69195b89af7ac7a444f27791435f98647edff595aa0479 as builder
 WORKDIR /app
 
-RUN apt update && apt install -y --no-install-recommends libbtrfs-dev libgpgme-dev
+RUN apt update && apt install -y --no-install-recommends git
 
 COPY go.mod go.sum ./
 RUN go mod download
 
+COPY ./.git ./.git
 COPY ./cmd ./cmd
 COPY ./internal ./internal
 
-RUN go build -tags remote -o ./build/main ./cmd
+RUN go build -tags remote -ldflags "-X 'main.version=$(git describe --tags)'" -o ./build/main ./cmd
 
 # ---
 
-FROM docker.io/debian:13.4@sha256:e2d08da6f42ef4b09b165d55528a12727aeed8240dc9edf888e3ec07e10ef9da
+FROM docker.io/debian:13.5@sha256:4ae67669760b807c19f23902a3fd7c121a6a70cf2ae709035674b23e712e4d62
 WORKDIR /app
 
 RUN apt update \
   && apt install -y --no-install-recommends \
   ca-certificates \
-  libbtrfs-dev \
-  libgpgme-dev \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/build/main /usr/local/bin/tedium
@@ -32,6 +31,6 @@ LABEL image.registry=ghcr.io
 LABEL org.opencontainers.image.description=""
 LABEL org.opencontainers.image.documentation=""
 LABEL org.opencontainers.image.title="tedium"
-LABEL org.opencontainers.image.url="https://github.com/markormesher/tedium"
+LABEL org.opencontainers.image.url=""
 LABEL org.opencontainers.image.vendor=""
 LABEL org.opencontainers.image.version=""
