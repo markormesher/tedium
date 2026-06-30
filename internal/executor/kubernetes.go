@@ -145,14 +145,44 @@ func (e *KubernetesExecutor) executeChore(job schema.Job) error {
 	}
 
 	// start the job
+	slog.Info("starting job", "repo", job.Repo.FullName(), "chore", job.Chore.Name, "job", k8sJob.GetName())
 	_, err := e.jobClient.Create(k8sExecutorContext, k8sJob, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("error creating execution job: %w", err)
 	}
 
-	// TODO: track job to completion
+	// track job to completion
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-k8sExecutorContext.Done():
+			return fmt.Errorf("context cancelled while waiting for job %q: %w", k8sJob.Name, k8sExecutorContext.Err())
 
-	return nil
+		case <-ticker.C:
+			j, err := e.jobClient.Get(k8sExecutorContext, k8sJob.Name, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("lost track of job %q: %w", k8sJob.Name, err)
+			}
+
+			for _, cond := range j.Status.Conditions {
+				if cond.Status != corev1.ConditionTrue {
+					continue
+				}
+
+				switch cond.Type {
+				case batchv1.JobComplete:
+					slog.Info("job finished", "repo", job.Repo.FullName(), "chore", job.Chore.Name)
+					return nil
+
+				case batchv1.JobFailed:
+					return fmt.Errorf("job %q failed: %s: %s", k8sJob.Name, cond.Reason, cond.Message)
+				}
+			}
+
+			// neither complete nor failed yet, keep polling
+		}
+	}
 }
 
 func k8sEnvFromMap(mapEnv map[string]string) []corev1.EnvVar {
