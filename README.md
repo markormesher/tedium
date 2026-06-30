@@ -2,6 +2,8 @@
 
 Tedium is a K8s-based tool to automate the execution of boring or repetitive tasks, called "chores", across all of your Git repos. All chores run in containers, providing complete control over the tooling available. If running a chore against a repo results in changes, Tedium will push those changes on a branch and open or update a PR for you.
 
+:warning: Note - until this tool hits v1.x, there may be some breaking changes in config and functionality. Check changes before upgrading - you have been warned!
+
 ## 💻 Usage
 
 The best way to run Tedium is via its container image. The default container command expects a [config file](#-configuration) at `/tedium/config.yml` but this can be overridden by specifying your own command.
