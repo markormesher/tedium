@@ -12,7 +12,7 @@ require (
 	k8s.io/client-go v0.36.1
 )
 
-replace github.com/cyphar/filepath-securejoin => github.com/cyphar/filepath-securejoin v0.5.0
+replace github.com/cyphar/filepath-securejoin => github.com/cyphar/filepath-securejoin v0.7.0
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
