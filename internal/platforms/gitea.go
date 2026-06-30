@@ -19,11 +19,11 @@ type GiteaPlatform struct {
 	auth     *schema.AuthConfig
 
 	// generated locally
-	apiBaseUrl *urllib.URL
+	apiBaseURL *urllib.URL
 	profile    schema.PlatformProfile
 }
 
-func giteaPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) (*GiteaPlatform, error) {
+func giteaPlatformFromConfig(platformConfig schema.PlatformConfig) (*GiteaPlatform, error) {
 	if platformConfig.Auth != nil && platformConfig.Auth.Type != schema.AuthConfigTypeUserToken {
 		return nil, fmt.Errorf("cannot construct Gitea platform with auth type other than user token (platform: %s)", platformConfig.BaseURL)
 	}
@@ -41,7 +41,7 @@ func giteaPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.Pla
 	p.baseURLs = []*urllib.URL{urlParsed}
 
 	// generate API URL
-	p.apiBaseUrl = urlParsed.JoinPath("/api/v1")
+	p.apiBaseURL = urlParsed.JoinPath("/api/v1")
 
 	// normalise alternate base URLs
 	for _, u := range platformConfig.AlternateBaseURLs {
@@ -58,7 +58,7 @@ func giteaPlatformFromConfig(conf schema.TediumConfig, platformConfig schema.Pla
 // interface methods
 
 func (p *GiteaPlatform) Init(conf schema.TediumConfig) error {
-	err := p.loadProfile(conf)
+	err := p.loadProfile()
 	if err != nil {
 		return err
 	}
@@ -74,8 +74,8 @@ func (p *GiteaPlatform) Config() schema.PlatformConfig {
 	return p.PlatformConfig
 }
 
-func (p *GiteaPlatform) ApiBaseUrl() *urllib.URL {
-	return p.apiBaseUrl
+func (p *GiteaPlatform) APIBaseURL() *urllib.URL {
+	return p.apiBaseURL
 }
 
 func (p *GiteaPlatform) AcceptsURL(url string) (string, bool) {
@@ -109,14 +109,14 @@ func (p *GiteaPlatform) AuthToken() string {
 
 func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	if p.auth == nil {
-		slog.Warn("no auth configured for paltform; skipping repo discovery", "baseURL", p.baseURLs[0])
+		slog.Warn("no auth configured for platform; skipping repo discovery", "baseURL", p.baseURLs[0])
 		return []schema.Repo{}, nil
 	}
 
 	var repoData struct {
 		Data []struct {
 			Name          string `json:"name"`
-			CloneUrl      string `json:"clone_url"`
+			CloneURL      string `json:"clone_url"`
 			DefaultBranch string `json:"default_branch"`
 			Archived      bool   `json:"archived"`
 			Mirror        bool   `json:"mirror"`
@@ -127,7 +127,7 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 	}
 
 	var output []schema.Repo
-	url := fmt.Sprintf("%s/repos/search?page=1&limit=50", p.apiBaseUrl)
+	url := fmt.Sprintf("%s/repos/search?page=1&limit=50", p.apiBaseURL)
 
 	for {
 		_, req := p.authedRequest()
@@ -143,16 +143,16 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 		}
 
 		for _, repo := range repoData.Data {
-			cloneURL, ok := p.AcceptsURL(repo.CloneUrl)
+			cloneURL, ok := p.AcceptsURL(repo.CloneURL)
 			if !ok {
-				return nil, fmt.Errorf("platform returned a repo with an unaccepted clone URL: %s", repo.CloneUrl)
+				return nil, fmt.Errorf("platform returned a repo with an unaccepted clone URL: %s", repo.CloneURL)
 			}
 
 			output = append(output, schema.Repo{
 				OwnerName: repo.Owner.Username,
 				Name:      repo.Name,
 
-				CloneUrl: cloneURL,
+				CloneURL: cloneURL,
 				Auth: schema.RepoAuth{
 					// TODO: don't forget to set this properly when app auth is supported
 					Username: "x-access-token",
@@ -176,7 +176,7 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 }
 
 func (p *GiteaPlatform) RepoHasTediumConfig(repo schema.Repo) (bool, error) {
-	file, err := p.ReadRepoFile(repo, "", utils.AddYamlJsonExtensions(".tedium"))
+	file, err := p.ReadRepoFile(repo, "", utils.AddConfigFileExtensions(".tedium"))
 
 	if err != nil {
 		return false, fmt.Errorf("failed to read Tedium file via Gitea API: %w", err)
@@ -198,7 +198,7 @@ func (p *GiteaPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandid
 		}
 
 		req.SetResult(&repoFile)
-		url := fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.apiBaseUrl, repo.OwnerName, repo.Name, path)
+		url := fmt.Sprintf("%s/repos/%s/%s/contents/%s", p.apiBaseURL, repo.OwnerName, repo.Name, path)
 		response, err := req.Get(url)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read file via Gitea API: %w", err)
@@ -224,7 +224,7 @@ func (p *GiteaPlatform) ReadRepoFile(repo schema.Repo, branch string, pathCandid
 }
 
 func (p *GiteaPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
-	slog.Info("Opening or updating PR", "chore", job.Chore.Name)
+	slog.Info("opening or updating PR", "chore", job.Chore.Name)
 
 	var existingPrs []struct {
 		Num   int    `json:"number"`
@@ -241,7 +241,7 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 
 	_, req := p.authedRequest()
 	req.SetResult(&existingPrs)
-	response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/pulls", p.apiBaseUrl, job.Repo.OwnerName, job.Repo.Name))
+	response, err := req.Get(fmt.Sprintf("%s/repos/%s/%s/pulls", p.apiBaseURL, job.Repo.OwnerName, job.Repo.Name))
 	if err != nil {
 		return fmt.Errorf("error fetching existing PRs: %w", err)
 	}
@@ -258,7 +258,7 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 		}
 	}
 
-	prBody := map[string]interface{}{
+	prBody := map[string]any{
 		"base":  job.Repo.DefaultBranch,
 		"head":  job.FinalBranchName,
 		"title": job.Chore.PrTitle(),
@@ -270,11 +270,11 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 	req.SetBody(prBody)
 
 	if existingPrNum == 0 {
-		slog.Debug("Opening PR")
-		response, err = req.Post(fmt.Sprintf("%s/repos/%s/%s/pulls", p.apiBaseUrl, job.Repo.OwnerName, job.Repo.Name))
+		slog.Debug("opening PR")
+		response, err = req.Post(fmt.Sprintf("%s/repos/%s/%s/pulls", p.apiBaseURL, job.Repo.OwnerName, job.Repo.Name))
 	} else {
-		slog.Debug("Updating PR")
-		response, err = req.Patch(fmt.Sprintf("%s/repos/%s/%s/pulls/%d", p.apiBaseUrl, job.Repo.OwnerName, job.Repo.Name, existingPrNum))
+		slog.Debug("updating PR")
+		response, err = req.Patch(fmt.Sprintf("%s/repos/%s/%s/pulls/%d", p.apiBaseURL, job.Repo.OwnerName, job.Repo.Name, existingPrNum))
 	}
 
 	if err != nil {
@@ -290,7 +290,7 @@ func (p *GiteaPlatform) OpenOrUpdatePullRequest(job schema.Job) error {
 
 // internal methods
 
-func (p *GiteaPlatform) loadProfile(conf schema.TediumConfig) error {
+func (p *GiteaPlatform) loadProfile() error {
 	if p.auth == nil || p.SkipDiscovery {
 		return nil
 	}
@@ -301,7 +301,7 @@ func (p *GiteaPlatform) loadProfile(conf schema.TediumConfig) error {
 
 	_, req := p.authedRequest()
 	req.SetResult(&user)
-	response, err := req.Get(fmt.Sprintf("%s/user", p.apiBaseUrl))
+	response, err := req.Get(fmt.Sprintf("%s/user", p.apiBaseURL))
 
 	if err != nil {
 		return fmt.Errorf("failed to load user profile: %v", err)

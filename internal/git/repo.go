@@ -20,7 +20,7 @@ var repoClonePath = "/tedium/repo"
 func CloneRepo(job schema.Job, conf schema.TediumConfig) error {
 	repo := job.Repo
 
-	slog.Info("Cloning repo", "url", repo.CloneUrl)
+	slog.Info("cloning repo", "url", repo.CloneURL)
 
 	err := os.MkdirAll(repoClonePath, os.ModePerm)
 	if err != nil {
@@ -28,7 +28,7 @@ func CloneRepo(job schema.Job, conf schema.TediumConfig) error {
 	}
 
 	_, err = git.PlainClone(repoClonePath, false, &git.CloneOptions{
-		URL:  repo.CloneUrl,
+		URL:  repo.CloneURL,
 		Auth: repo.Auth.ToTransportAuth(),
 	})
 	if err != nil {
@@ -64,7 +64,7 @@ func CheckoutWorkBranch(job schema.Job) error {
 		return fmt.Errorf("error checking whether chore branch already exists: %w", err)
 	}
 
-	slog.Info("Checking out work branch for chore", "branch", job.WorkBranchName, "created", !branchExists)
+	slog.Info("checking out work branch for chore", "branch", job.WorkBranchName, "created", !branchExists)
 
 	branchRefName := plumbing.NewBranchReferenceName(job.WorkBranchName)
 	err = worktree.Checkout(&git.CheckoutOptions{
@@ -93,7 +93,7 @@ func CommitIfChanged(job schema.Job, profile schema.PlatformProfile) (bool, erro
 		return false, nil
 	}
 
-	slog.Info("Committing changes")
+	slog.Info("committing changes")
 
 	_, err = worktree.Add(".")
 	if err != nil {
@@ -153,7 +153,7 @@ func PushWorkBranchToFinalBranch(job schema.Job) error {
 		return err
 	}
 
-	slog.Info("Pushing changes")
+	slog.Info("pushing changes")
 
 	err = realRepo.Push(&git.PushOptions{
 		RefSpecs: []config.RefSpec{

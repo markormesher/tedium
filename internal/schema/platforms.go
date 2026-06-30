@@ -12,7 +12,7 @@ import (
 // PlatformConfig defines a Git platform from which repos can be discovered, such as Gitea or GitHub.
 type PlatformConfig struct {
 	Type    string      `json:"type" yaml:"type"`
-	BaseURL string      `json:"baseUrl" yaml:"baseUrl"`
+	BaseURL string      `json:"baseURL" yaml:"baseURL"`
 	Auth    *AuthConfig `json:"auth" yaml:"auth"`
 
 	// AlternateBaseURLs define other URLs that this platform should be used for (e.g. if you host a mirror of a public platform, or access a platform from multiple URLs).
@@ -39,15 +39,15 @@ type AuthConfig struct {
 	Token string `json:"token" yaml:"token"`
 
 	// type: app
-	ClientId             string `json:"clientId" yaml:"clientId"`
+	ClientID             string `json:"clientId" yaml:"clientId"`
 	PrivateKeyString     string `json:"privateKeyString" yaml:"privateKeyString"`
 	PrivateKeyFile       string `json:"privateKeyFile" yaml:"privateKeyFile"`
-	InstallationId       string `json:"installationId" yaml:"installationId"`
+	InstallationID       string `json:"installationId" yaml:"installationId"`
 	AppInstallationToken string `json:"doNotUse_appInstallationToken"`
 }
 
 func (ac *AuthConfig) GenerateJwt() (string, error) {
-	if ac.ClientId == "" {
+	if ac.ClientID == "" {
 		return "", fmt.Errorf("error generating JWT: client ID is missing")
 	}
 
@@ -78,7 +78,7 @@ func (ac *AuthConfig) GenerateJwt() (string, error) {
 	claims := jwt.MapClaims{
 		"iat": now,
 		"exp": now + 60*10,
-		"iss": ac.ClientId,
+		"iss": ac.ClientID,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)

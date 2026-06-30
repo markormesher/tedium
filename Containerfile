@@ -1,7 +1,7 @@
 FROM docker.io/golang:1.26.4@sha256:68cb6d68bed024785b69195b89af7ac7a444f27791435f98647edff595aa0479 as builder
 WORKDIR /app
 
-RUN apt update && apt install -y --no-install-recommends libbtrfs-dev libgpgme-dev git
+RUN apt update && apt install -y --no-install-recommends git
 
 COPY go.mod go.sum ./
 RUN go mod download
@@ -20,8 +20,6 @@ WORKDIR /app
 RUN apt update \
   && apt install -y --no-install-recommends \
   ca-certificates \
-  libbtrfs-dev \
-  libgpgme-dev \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/build/main /usr/local/bin/tedium

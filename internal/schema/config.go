@@ -26,7 +26,6 @@ type TediumConfig struct {
 	// Images defines the container images used for Tedium-owned stages of execution
 	Images struct {
 		Tedium string `json:"tedium" yaml:"tedium"`
-		Pause  string `json:"pause" yaml:"pause"`
 	} `json:"images" yaml:"images"`
 
 	// AutoEnrollment defines the Tedium config to apply to repos that don't already have one.
@@ -34,9 +33,6 @@ type TediumConfig struct {
 		Enabled bool       `json:"enabled" yaml:"enabled"`
 		Config  RepoConfig `json:"config" yaml:"config"`
 	} `json:"autoEnrollment" yaml:"autoEnrollment"`
-
-	// ChoreConcurrency defines how many chores Tedium should attempt to run concurrently. It is an upper bound and may not be reached. Defaults to 1.
-	ChoreConcurrency int `json:"choreConcurrency" yaml:"choreConcurrency"`
 }
 
 // RepoConfig is read from a target repo. The main purpose is to define which chores are to be applied.
@@ -47,7 +43,7 @@ type RepoConfig struct {
 
 // RepoChoreConfig defines one chore to apply to a repo.
 type RepoChoreConfig struct {
-	Url       string `json:"url" yaml:"url"`
+	URL       string `json:"url" yaml:"url"`
 	Directory string `json:"directory" yaml:"directory"`
 
 	// Branch specifies the bracnh to read the chore definition from. If blank the default branch will be used.
@@ -74,7 +70,7 @@ func LoadTediumConfig(configFilePath string, version string) (TediumConfig, erro
 	}
 
 	var conf TediumConfig
-	if utils.IsYamlOrJsonFile(configFilePath) {
+	if utils.HasConfigFileExtension(configFilePath) {
 		decoder := yaml.NewDecoder(bytes.NewReader(configFileContent))
 		decoder.KnownFields(true)
 		err := decoder.Decode(&conf)
@@ -96,10 +92,6 @@ func LoadTediumConfig(configFilePath string, version string) (TediumConfig, erro
 		conf.Version = version
 	}
 
-	if conf.Images.Pause == "" {
-		conf.Images.Pause = "ghcr.io/markormesher/tedium-pause:latest"
-	}
-
 	if conf.Images.Tedium == "" {
 		if conf.Version == "" {
 			conf.Images.Tedium = "ghcr.io/markormesher/tedium:latest"
@@ -108,21 +100,17 @@ func LoadTediumConfig(configFilePath string, version string) (TediumConfig, erro
 		}
 	}
 
-	if conf.ChoreConcurrency < 1 {
-		conf.ChoreConcurrency = 1
+	if conf.Executor.ChoreConcurrency < 1 {
+		conf.Executor.ChoreConcurrency = 1
 	}
 
 	// sanity checks
 
-	if conf.Executor.Podman != nil && conf.Executor.Kubernetes != nil {
-		return TediumConfig{}, fmt.Errorf("invalid Tedium config: more than one executor configured")
-	}
-
 	urlsSeen := map[string]bool{}
 	for _, platform := range conf.Platforms {
-		allUrls := []string{platform.BaseURL}
-		allUrls = append(allUrls, platform.AlternateBaseURLs...)
-		for _, url := range allUrls {
+		allURLs := []string{platform.BaseURL}
+		allURLs = append(allURLs, platform.AlternateBaseURLs...)
+		for _, url := range allURLs {
 			if urlsSeen[url] {
 				return TediumConfig{}, fmt.Errorf("invalid Tedium config: duplicate platform URL %s", url)
 			}

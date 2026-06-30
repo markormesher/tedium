@@ -1,82 +1,114 @@
 package entrypoints
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
-	"sync"
+	"strings"
+	"time"
 
-	"github.com/markormesher/tedium/internal/executors"
+	"github.com/markormesher/tedium/internal/executor"
 	"github.com/markormesher/tedium/internal/platforms"
 	"github.com/markormesher/tedium/internal/schema"
 	"github.com/markormesher/tedium/internal/utils"
 )
 
-type RunStats struct {
-	ReposDiscovered int
-	ReposSkipped    int
-	ReposFailed     int
-	JobsDiscovered  int
-	JobsFailed      int
-}
-
-var runStats = &RunStats{}
-
 func Run(conf schema.TediumConfig) {
-	// setup the executor (this is cheap, it doesn't matter if we end up having no chores)
-	slog.Info("Initialising executor")
-	executor, err := executors.FromExecutorConfig(conf.Executor)
+	// set up queues
+	jobQueue := make(chan schema.Job, conf.Executor.ChoreConcurrency*100)
+	eventQueue := make(chan schema.Event, conf.Executor.ChoreConcurrency*10)
+
+	// setup the executor
+	slog.Info("initialising executor")
+	err := executor.CreateAndStart(conf, jobQueue, eventQueue)
 	if err != nil {
-		slog.Error("Could not initialise executor", "error", err)
+		slog.Error("could not initialise executor", "error", err)
 		os.Exit(1)
 	}
 
-	err = executor.Init(conf)
-	if err != nil {
-		slog.Error("Could not initialise executor", "error", err)
-		os.Exit(1)
-	}
+	// gather jobs and feed them to the executor
+	slog.Info("starting to gather chores")
+	go gatherJobs(conf, jobQueue, eventQueue)
 
-	// create job queue and worker pool
-	// we allow one job to buffer in the channel per worker, so each worker will virtually always be able to take a new job as soon as it finishes one
-	// this also slows down our calling of the platform APIs without slowing end to end exection time, which is a win-win
-	slog.Info("Starting worker pool")
-	var workerWg sync.WaitGroup
-	jobQueue := make(chan schema.Job, conf.ChoreConcurrency)
-	for range conf.ChoreConcurrency {
-		workerWg.Add(1)
-		go func() {
-			for job := range jobQueue {
-				executeJob(conf, executor, job)
-			}
-			workerWg.Done()
-		}()
-	}
-
-	// gather jobs and feed them to the queue
-	slog.Info("Starting to gather chores")
-	gatherJobs(conf, jobQueue)
-	close(jobQueue)
-	slog.Info("Finished gathering chores")
-
-	// wait for our workers to finish handling all the jobs...
-	workerWg.Wait()
-
-	slog.Info("Stats", "stats", runStats)
+	// watch events and wait for completion
+	done := watchEvents(eventQueue)
+	<-done
 }
 
-func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job) {
+func watchEvents(eventQueue <-chan schema.Event) chan struct{} {
+	type stats struct {
+		ReposDiscovered int
+		ReposSkipped    int
+		ReposFailed     int
+		JobsDiscovered  int
+		JobsSuceeded    int
+		JobsFailed      int
+	}
+
+	done := make(chan struct{})
+	discoveryFinished := false
+	s := stats{}
+
+	logProgress := func() {
+		slog.Info("progress", "stats", s)
+	}
+
+	// this is the only routine that modifies the state above, so no locking is needed
+	go func() {
+		for e := range eventQueue {
+			switch e {
+			case schema.RepoDiscovered:
+				s.ReposDiscovered++
+
+			case schema.RepoSkipped:
+				s.ReposSkipped++
+
+			case schema.RepoFailed:
+				s.ReposFailed++
+
+			case schema.DiscoveryFinished:
+				discoveryFinished = true
+
+			case schema.JobDiscovered:
+				s.JobsDiscovered++
+
+			case schema.JobSucceeded:
+				s.JobsSuceeded++
+
+			case schema.JobFailed:
+				s.JobsFailed++
+			}
+
+			if discoveryFinished && s.JobsDiscovered == s.JobsSuceeded+s.JobsFailed {
+				logProgress()
+				done <- struct{}{}
+			}
+		}
+	}()
+
+	// regularly print stats
+	go func() {
+		for range time.Tick(time.Second * 10) {
+			logProgress()
+		}
+	}()
+
+	return done
+}
+
+func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job, eventQueue chan<- schema.Event) {
 	// init ALL platforms before trying to use ANY of them
 	for _, platformConfig := range conf.Platforms {
-		slog.Info("Initialising platform", "baseUrl", platformConfig.BaseURL)
+		slog.Info("initialising platform", "baseURL", platformConfig.BaseURL)
 		platform, err := platforms.FromConfig(conf, platformConfig)
 		if err != nil {
-			slog.Error("Error initialising platform", "error", err)
+			slog.Error("error initialising platform", "error", err)
 			os.Exit(1)
 		}
 
 		err = platform.Init(conf)
 		if err != nil {
-			slog.Error("Error initialising platform", "error", err)
+			slog.Error("error initialising platform", "error", err)
 			os.Exit(1)
 		}
 	}
@@ -85,7 +117,7 @@ func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job) {
 		platform := platforms.FromURL(platformConfig.BaseURL)
 		if platform == nil {
 			// this shouldn't ever happen
-			slog.Error("Unable to retrieve existing platform by base URL", "baseUrl", platformConfig.BaseURL)
+			slog.Error("unable to retrieve existing platform by base URL", "baseURL", platformConfig.BaseURL)
 			os.Exit(1)
 		}
 
@@ -93,43 +125,46 @@ func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job) {
 			continue
 		}
 
-		slog.Info("Discovering repos")
+		slog.Info("discovering repos")
 		allRepos, err := platform.DiscoverRepos()
 		if err != nil {
-			slog.Error("Error discovering repos", "error", err)
+			slog.Error("error discovering repos", "error", err)
 			os.Exit(1)
 		}
 
-		slog.Info("Finished discovering repos", "count", len(allRepos))
-		runStats.ReposDiscovered = len(allRepos)
+		slog.Info("finished discovering repos", "count", len(allRepos))
 
 		for _, targetRepo := range allRepos {
+			eventQueue <- schema.RepoDiscovered
+
 			if targetRepo.Archived {
-				slog.Info("Repo is archived - skipping", "repo", targetRepo.FullName())
-				runStats.ReposSkipped++
+				slog.Info("repo is archived - skipping", "repo", targetRepo.FullName())
+				eventQueue <- schema.RepoSkipped
 				continue
 			}
 
 			if targetRepo.Mirror {
-				slog.Info("Repo is a mirror - skipping", "repo", targetRepo.FullName())
-				runStats.ReposSkipped++
+				slog.Info("repo is a mirror - skipping", "repo", targetRepo.FullName())
+				eventQueue <- schema.RepoSkipped
 				continue
 			}
 
 			if !platformConfig.AcceptsRepo(targetRepo.FullName()) {
-				slog.Info("Repo does not match any filter - skipping", "repo", targetRepo.FullName())
-				runStats.ReposSkipped++
+				slog.Info("repo does not match any filter - skipping", "repo", targetRepo.FullName())
+				eventQueue <- schema.RepoSkipped
 				continue
 			}
 
 			hasConfig, err := platform.RepoHasTediumConfig(targetRepo)
 			if err != nil {
-				slog.Error("Error checking whether repo has a Tedium config", "repo", targetRepo.FullName(), "error", err)
-				os.Exit(1)
+				slog.Error("error checking whether repo has a Tedium config", "repo", targetRepo.FullName(), "error", err)
+				eventQueue <- schema.RepoFailed
+				continue
 			}
+
 			if !hasConfig {
-				slog.Info("Repo has no Tedium config - skipping", "repo", targetRepo.FullName())
-				runStats.ReposSkipped++
+				slog.Info("repo has no Tedium config - skipping", "repo", targetRepo.FullName())
+				eventQueue <- schema.RepoSkipped
 				continue
 
 				// TODO: auto-enrollment
@@ -137,22 +172,24 @@ func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job) {
 
 			repoConfig, err := resolveRepoConfig(conf, targetRepo)
 			if err != nil {
-				slog.Error("Error resolving repo config", "repo", targetRepo.FullName(), "error", err)
-				runStats.ReposFailed++
-				os.Exit(1)
+				slog.Error("error resolving repo config", "repo", targetRepo.FullName(), "error", err)
+				eventQueue <- schema.RepoFailed
+				continue
 			}
 
-			slog.Info("Resolved chores for repo", "repo", targetRepo.FullName(), "chores", len(repoConfig.Chores))
+			slog.Info("resolved chores for repo", "repo", targetRepo.FullName(), "chores", len(repoConfig.Chores))
 
 			for _, chore := range repoConfig.Chores {
-				jobQueue <- schema.Job{
-					Config:          conf,
-					Repo:            targetRepo,
-					Chore:           chore,
-					PlatformConfig:  platformConfig,
-					WorkBranchName:  utils.UniqueName("work"),
-					FinalBranchName: utils.ConvertToBranchName(chore.Name),
+				eventQueue <- schema.JobDiscovered
+
+				job, err := prepareJob(conf, chore, targetRepo, platform)
+				if err != nil {
+					slog.Error("error preparing job", "repo", targetRepo.FullName(), "chore", chore.Name, "error", err)
+					eventQueue <- schema.JobFailed
+					continue
 				}
+
+				jobQueue <- job
 			}
 		}
 	}
@@ -162,41 +199,106 @@ func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job) {
 		platform := platforms.FromURL(platformConfig.BaseURL)
 		if platform == nil {
 			// this shouldn't ever happen
-			slog.Error("Unable to retrieve existing platform by base URL", "baseUrl", platformConfig.BaseURL)
+			slog.Error("unable to retrieve existing platform by base URL", "baseURL", platformConfig.BaseURL)
 			os.Exit(1)
 		}
 
-		slog.Info("De-initialising platform", "baseUrl", platformConfig.BaseURL)
+		slog.Info("de-initialising platform", "baseURL", platformConfig.BaseURL)
 		err := platform.Deinit()
 		if err != nil {
-			slog.Error("Error de-initialising platform", "error", err)
+			slog.Error("error de-initialising platform", "error", err)
 			os.Exit(1)
 		}
 	}
+
+	eventQueue <- schema.DiscoveryFinished
+	close(jobQueue)
 }
 
-func executeJob(conf schema.TediumConfig, executor schema.Executor, job schema.Job) {
-	runStats.JobsDiscovered++
-
-	platform, err := platforms.FromConfig(conf, job.PlatformConfig)
-	if err != nil {
-		slog.Error("Failed to get platform for job - aborting this chore", "error", err, "repo", job.Repo.FullName(), "chore", job.Chore.Name)
-		runStats.JobsFailed++
-		return
+func prepareJob(conf schema.TediumConfig, chore schema.ChoreSpec, targetRepo schema.Repo, platform platforms.Platform) (schema.Job, error) {
+	job := schema.Job{
+		Config:          conf,
+		Repo:            targetRepo,
+		Chore:           chore,
+		PlatformConfig:  platform.Config(),
+		WorkBranchName:  utils.UniqueName("work"),
+		FinalBranchName: utils.ConvertToBranchName(chore.Name),
 	}
 
-	job, err = executors.PrepareJob(platform, job)
+	jobEnvBundle, err := job.ToEnvironment()
 	if err != nil {
-		slog.Error("Failed to prepare job - aborting this chore", "error", err, "repo", job.Repo.FullName(), "chore", job.Chore.Name)
-		runStats.JobsFailed++
-		return
+		return schema.Job{}, fmt.Errorf("error generating job environment variable: %w", err)
 	}
 
-	slog.Info("Executing chore", "repo", job.Repo.FullName(), "chore", job.Chore.Name)
-	err = executor.ExecuteChore(job)
-	if err != nil {
-		slog.Error("Error executing chore - aborting this chore", "error", err, "repo", job.Repo.FullName(), "chore", job.Chore.Name)
-		runStats.JobsFailed++
-		return
+	tediumImage := conf.Images.Tedium
+
+	if !job.Chore.SkipCloneStep {
+		tediumStep := schema.ChoreStep{
+			Image:       tediumImage,
+			Command:     "/usr/local/bin/tedium --internal-command initChore",
+			Environment: jobEnvBundle,
+			Internal:    true,
+		}
+		job.Chore.Steps = append([]schema.ChoreStep{tediumStep}, job.Chore.Steps...)
 	}
+
+	if !job.Chore.SkipFinaliseStep {
+		tediumStep := schema.ChoreStep{
+			Image:       tediumImage,
+			Command:     "/usr/local/bin/tedium --internal-command finaliseChore",
+			Environment: jobEnvBundle,
+			Internal:    true,
+		}
+		job.Chore.Steps = append(job.Chore.Steps, tediumStep)
+	}
+
+	job.ExecutionSteps = make([]schema.ExecutionStep, len(job.Chore.Steps))
+	for i, step := range job.Chore.Steps {
+		job.ExecutionSteps[i] = schema.ExecutionStep{
+			Label:       fmt.Sprintf("step-%d", i+1),
+			Image:       step.Image,
+			Command:     step.Command,
+			Environment: envForStep(platform, job, step),
+		}
+	}
+
+	return job, nil
+}
+
+func envForStep(platform platforms.Platform, job schema.Job, step schema.ChoreStep) map[string]string {
+	env := map[string]string{}
+
+	// used by Tedium directly
+	env["TEDIUM_COMMAND"] = step.Command
+
+	// not used by Tedium directly
+	env["TEDIUM_REPO_OWNER"] = job.Repo.OwnerName
+	env["TEDIUM_REPO_NAME"] = job.Repo.Name
+	env["TEDIUM_REPO_CLONE_URL"] = job.Repo.CloneURL
+	env["TEDIUM_REPO_DEFAULT_BRANCH"] = job.Repo.DefaultBranch
+	env["TEDIUM_PLATFORM_TYPE"] = platform.Config().Type
+	env["TEDIUM_PLATFORM_BASE_URL"] = platform.Config().BaseURL
+	env["TEDIUM_PLATFORM_API_BASE_URL"] = platform.APIBaseURL().String()
+	env["TEDIUM_PLATFORM_EMAIL"] = platform.Profile().Email
+	if job.Chore.SourceConfig.ExposePlatformToken {
+		env["TEDIUM_PLATFORM_TOKEN"] = platform.AuthToken()
+	}
+
+	for k, v := range step.Environment {
+		if !step.Internal && strings.HasPrefix(k, "TEDIUM_") {
+			slog.Warn("not passing environment variable to chore step", "key", k)
+		} else {
+			env[k] = v
+		}
+	}
+
+	for k, v := range job.Chore.SourceConfig.Environment {
+		if strings.HasPrefix(k, "TEDIUM_") {
+			slog.Warn("not passing environment variable to chore step", "key", k)
+		} else {
+			env[k] = v
+		}
+	}
+
+	return env
 }

@@ -14,7 +14,7 @@ type Platform interface {
 	Init(conf schema.TediumConfig) error
 	Deinit() error
 	Config() schema.PlatformConfig
-	ApiBaseUrl() *urllib.URL
+	APIBaseURL() *urllib.URL
 
 	AcceptsURL(string) (string, bool)
 
@@ -52,14 +52,14 @@ func FromConfig(conf schema.TediumConfig, platformConfig schema.PlatformConfig) 
 
 	switch platformConfig.Type {
 	case "gitea":
-		p, err := giteaPlatformFromConfig(conf, platformConfig)
+		p, err := giteaPlatformFromConfig(platformConfig)
 		if err != nil {
 			return nil, fmt.Errorf("error building Gitea platform: %w", err)
 		}
 		platform = p
 
 	case "github":
-		p, err := githubPlatformFromConfig(conf, platformConfig)
+		p, err := githubPlatformFromConfig(platformConfig)
 		if err != nil {
 			return nil, fmt.Errorf("error building GitHub platform: %w", err)
 		}
