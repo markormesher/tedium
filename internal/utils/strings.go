@@ -11,7 +11,7 @@ import (
 func randomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
 	var result strings.Builder
-	for i := 0; i < length; i++ {
+	for range length {
 		randomIndex := rand.Intn(len(charset))
 		result.WriteByte(charset[randomIndex])
 	}
@@ -22,7 +22,7 @@ func UniqueName(prefix string) string {
 	return "tedium-" + prefix + "-" + randomString(8)
 }
 
-func Sha256String(input string) string {
+func SHA256String(input string) string {
 	hash := sha256.New()
 	hash.Write([]byte(input))
 	hashSum := hash.Sum(nil)

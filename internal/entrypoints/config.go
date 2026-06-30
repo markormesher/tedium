@@ -26,13 +26,13 @@ func resolveRepoConfig(_ schema.TediumConfig, targetRepo schema.Repo) (schema.Re
 	// non-looping depth-first search on "extends" urls
 	urlsVisited := map[string]bool{}
 	var urlsToVisit utils.Queue[string]
-	urlsToVisit.Push(targetRepo.CloneUrl)
+	urlsToVisit.Push(targetRepo.CloneURL)
 	for {
-		configUrl, ok := urlsToVisit.Pop()
+		configURL, ok := urlsToVisit.Pop()
 		if !ok {
 			break
 		}
-		urlsVisited[configUrl] = true
+		urlsVisited[configURL] = true
 
 		var fileName string
 		if configsToMerge.Size == 0 {
@@ -42,18 +42,18 @@ func resolveRepoConfig(_ schema.TediumConfig, targetRepo schema.Repo) (schema.Re
 			fileName = "index"
 		}
 
-		configRepo, err := schema.RepoFromUrl(configUrl)
+		configRepo, err := schema.RepoFromURL(configURL)
 		if err != nil {
 			return schema.ResolvedRepoConfig{}, fmt.Errorf("error constructing config repo before reading its config: %w", err)
 		}
 
-		platform := platforms.FromURL(configUrl)
+		platform := platforms.FromURL(configURL)
 		if platform == nil {
-			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to determine a platform to read repo config (config URL: %s)", configUrl)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to determine a platform to read repo config (config URL: %s)", configURL)
 		}
 
 		var repoConfigRaw []byte
-		repoConfigRaw, err = platform.ReadRepoFile(configRepo, "", utils.AddYamlJsonExtensions(fileName))
+		repoConfigRaw, err = platform.ReadRepoFile(configRepo, "", utils.AddConfigFileExtensions(fileName))
 		if err != nil {
 			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to read config file out of repo: %w", err)
 		}
@@ -69,12 +69,12 @@ func resolveRepoConfig(_ schema.TediumConfig, targetRepo schema.Repo) (schema.Re
 			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to unmarshal repo config file: %w", err)
 		}
 
-		for _, extendsUrl := range repoConfig.Extends {
-			visited := urlsVisited[extendsUrl]
+		for _, extendsURL := range repoConfig.Extends {
+			visited := urlsVisited[extendsURL]
 			if visited {
-				slog.Warn("loop detected in config extension - saw a URL for the second time", "url", extendsUrl)
+				slog.Warn("loop detected in config extension - saw a URL for the second time", "url", extendsURL)
 			} else {
-				urlsToVisit.Push(extendsUrl)
+				urlsToVisit.Push(extendsURL)
 			}
 		}
 
@@ -101,22 +101,22 @@ func resolveRepoConfig(_ schema.TediumConfig, targetRepo schema.Repo) (schema.Re
 		Chores: make([]schema.ChoreSpec, len(mergedConfig.Chores)),
 	}
 	for souceChoreIdx, sourceChore := range mergedConfig.Chores {
-		choreRepoUrl := sourceChore.Url
+		choreRepoURL := sourceChore.URL
 		choreBranch := sourceChore.Branch
 		choreDirectory := sourceChore.Directory
 
-		choreRepo, err := schema.RepoFromUrl(choreRepoUrl)
+		choreRepo, err := schema.RepoFromURL(choreRepoURL)
 		if err != nil {
 			return schema.ResolvedRepoConfig{}, fmt.Errorf("error constructing chore repo before reading its config: %w", err)
 		}
 
-		platform := platforms.FromURL(choreRepoUrl)
+		platform := platforms.FromURL(choreRepoURL)
 		if platform == nil {
-			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to determine a platform to read chore config (URL: %s)", choreRepoUrl)
+			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to determine a platform to read chore config (URL: %s)", choreRepoURL)
 		}
 
 		var choreSpecRaw []byte
-		choreSpecRaw, err = platform.ReadRepoFile(choreRepo, choreBranch, utils.AddYamlJsonExtensions(fmt.Sprintf("%s/chore", choreDirectory)))
+		choreSpecRaw, err = platform.ReadRepoFile(choreRepo, choreBranch, utils.AddConfigFileExtensions(fmt.Sprintf("%s/chore", choreDirectory)))
 		if err != nil {
 			return schema.ResolvedRepoConfig{}, fmt.Errorf("failed to read chore file out of repo: %w", err)
 		}
@@ -156,7 +156,7 @@ func mergeRepoConfigs(a, b schema.RepoConfig) (schema.RepoConfig, error) {
 		// if this chore is already defined, overwrite it with a merged version
 		didOverwrite := false
 		for i, cm := range merged.Chores {
-			if c.Url == cm.Url && c.Directory == cm.Directory {
+			if c.URL == cm.URL && c.Directory == cm.Directory {
 				mergedChore, err := mergeChoreConfigs(cm, c)
 				if err != nil {
 					return schema.RepoConfig{}, err

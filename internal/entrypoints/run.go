@@ -13,15 +13,6 @@ import (
 	"github.com/markormesher/tedium/internal/utils"
 )
 
-type Stats struct {
-	ReposDiscovered int
-	ReposSkipped    int
-	ReposFailed     int
-	JobsDiscovered  int
-	JobsSuceeded    int
-	JobsFailed      int
-}
-
 func Run(conf schema.TediumConfig) {
 	// set up queues
 	jobQueue := make(chan schema.Job, conf.Executor.ChoreConcurrency*10)
@@ -45,9 +36,18 @@ func Run(conf schema.TediumConfig) {
 }
 
 func watchEvents(eventQueue <-chan schema.Event) chan struct{} {
+	type stats struct {
+		ReposDiscovered int
+		ReposSkipped    int
+		ReposFailed     int
+		JobsDiscovered  int
+		JobsSuceeded    int
+		JobsFailed      int
+	}
+
 	done := make(chan struct{})
 	discoveryFinished := false
-	s := Stats{}
+	s := stats{}
 
 	logProgress := func() {
 		slog.Info("progress", "stats", s)
@@ -99,7 +99,7 @@ func watchEvents(eventQueue <-chan schema.Event) chan struct{} {
 func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job, eventQueue chan<- schema.Event) {
 	// init ALL platforms before trying to use ANY of them
 	for _, platformConfig := range conf.Platforms {
-		slog.Info("Initialising platform", "baseUrl", platformConfig.BaseURL)
+		slog.Info("initialising platform", "baseURL", platformConfig.BaseURL)
 		platform, err := platforms.FromConfig(conf, platformConfig)
 		if err != nil {
 			slog.Error("error initialising platform", "error", err)
@@ -117,7 +117,7 @@ func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job, eventQueue
 		platform := platforms.FromURL(platformConfig.BaseURL)
 		if platform == nil {
 			// this shouldn't ever happen
-			slog.Error("unable to retrieve existing platform by base URL", "baseUrl", platformConfig.BaseURL)
+			slog.Error("unable to retrieve existing platform by base URL", "baseURL", platformConfig.BaseURL)
 			os.Exit(1)
 		}
 
@@ -199,11 +199,11 @@ func gatherJobs(conf schema.TediumConfig, jobQueue chan<- schema.Job, eventQueue
 		platform := platforms.FromURL(platformConfig.BaseURL)
 		if platform == nil {
 			// this shouldn't ever happen
-			slog.Error("unable to retrieve existing platform by base URL", "baseUrl", platformConfig.BaseURL)
+			slog.Error("unable to retrieve existing platform by base URL", "baseURL", platformConfig.BaseURL)
 			os.Exit(1)
 		}
 
-		slog.Info("de-initialising platform", "baseUrl", platformConfig.BaseURL)
+		slog.Info("de-initialising platform", "baseURL", platformConfig.BaseURL)
 		err := platform.Deinit()
 		if err != nil {
 			slog.Error("error de-initialising platform", "error", err)
@@ -274,11 +274,11 @@ func envForStep(platform platforms.Platform, job schema.Job, step schema.ChoreSt
 	// not used by Tedium directly
 	env["TEDIUM_REPO_OWNER"] = job.Repo.OwnerName
 	env["TEDIUM_REPO_NAME"] = job.Repo.Name
-	env["TEDIUM_REPO_CLONE_URL"] = job.Repo.CloneUrl
+	env["TEDIUM_REPO_CLONE_URL"] = job.Repo.CloneURL
 	env["TEDIUM_REPO_DEFAULT_BRANCH"] = job.Repo.DefaultBranch
 	env["TEDIUM_PLATFORM_TYPE"] = platform.Config().Type
 	env["TEDIUM_PLATFORM_BASE_URL"] = platform.Config().BaseURL
-	env["TEDIUM_PLATFORM_API_BASE_URL"] = platform.ApiBaseUrl().String()
+	env["TEDIUM_PLATFORM_API_BASE_URL"] = platform.APIBaseURL().String()
 	env["TEDIUM_PLATFORM_EMAIL"] = platform.Profile().Email
 	if job.Chore.SourceConfig.ExposePlatformToken {
 		env["TEDIUM_PLATFORM_TOKEN"] = platform.AuthToken()
@@ -286,7 +286,7 @@ func envForStep(platform platforms.Platform, job schema.Job, step schema.ChoreSt
 
 	for k, v := range step.Environment {
 		if !step.Internal && strings.HasPrefix(k, "TEDIUM_") {
-			slog.Warn("Not passing environment variable to chore step", "key", k)
+			slog.Warn("not passing environment variable to chore step", "key", k)
 		} else {
 			env[k] = v
 		}
@@ -294,7 +294,7 @@ func envForStep(platform platforms.Platform, job schema.Job, step schema.ChoreSt
 
 	for k, v := range job.Chore.SourceConfig.Environment {
 		if strings.HasPrefix(k, "TEDIUM_") {
-			slog.Warn("Not passing environment variable to chore step", "key", k)
+			slog.Warn("not passing environment variable to chore step", "key", k)
 		} else {
 			env[k] = v
 		}

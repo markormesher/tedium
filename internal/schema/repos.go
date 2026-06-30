@@ -16,7 +16,7 @@ type Repo struct {
 	Name      string
 
 	// present for target repos only
-	CloneUrl      string
+	CloneURL      string
 	Auth          RepoAuth
 	DefaultBranch string
 	Archived      bool
@@ -39,8 +39,8 @@ func (ra *RepoAuth) ToTransportAuth() transport.AuthMethod {
 	}
 }
 
-func RepoFromUrl(repoUrl string) (Repo, error) {
-	urlParsed, err := url.Parse(repoUrl)
+func RepoFromURL(repoURL string) (Repo, error) {
+	urlParsed, err := url.Parse(repoURL)
 	if err != nil {
 		return Repo{}, fmt.Errorf("error parsing repo URL: %w", err)
 	}

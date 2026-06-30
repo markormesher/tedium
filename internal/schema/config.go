@@ -43,7 +43,7 @@ type RepoConfig struct {
 
 // RepoChoreConfig defines one chore to apply to a repo.
 type RepoChoreConfig struct {
-	Url       string `json:"url" yaml:"url"`
+	URL       string `json:"url" yaml:"url"`
 	Directory string `json:"directory" yaml:"directory"`
 
 	// Branch specifies the bracnh to read the chore definition from. If blank the default branch will be used.
@@ -70,7 +70,7 @@ func LoadTediumConfig(configFilePath string, version string) (TediumConfig, erro
 	}
 
 	var conf TediumConfig
-	if utils.IsYamlOrJsonFile(configFilePath) {
+	if utils.HasConfigFileExtension(configFilePath) {
 		decoder := yaml.NewDecoder(bytes.NewReader(configFileContent))
 		decoder.KnownFields(true)
 		err := decoder.Decode(&conf)
@@ -108,9 +108,9 @@ func LoadTediumConfig(configFilePath string, version string) (TediumConfig, erro
 
 	urlsSeen := map[string]bool{}
 	for _, platform := range conf.Platforms {
-		allUrls := []string{platform.BaseURL}
-		allUrls = append(allUrls, platform.AlternateBaseURLs...)
-		for _, url := range allUrls {
+		allURLs := []string{platform.BaseURL}
+		allURLs = append(allURLs, platform.AlternateBaseURLs...)
+		for _, url := range allURLs {
 			if urlsSeen[url] {
 				return TediumConfig{}, fmt.Errorf("invalid Tedium config: duplicate platform URL %s", url)
 			}

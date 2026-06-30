@@ -12,7 +12,7 @@ import (
 var version string // populated via ldflags
 
 func main() {
-	slog.Info("Tedium version: " + version)
+	slog.Info("tedium version: " + version)
 
 	internalCommand := flag.String("internal-command", "", "Internal command to perform when Tedium is running itself inside an executor")
 	configFilePath := flag.String("config", "", "Path to configuration file")
@@ -31,13 +31,13 @@ func main() {
 
 	// normal case: user invocation
 	if *configFilePath == "" {
-		slog.Error("Config file not provided")
+		slog.Error("config file not provided")
 		os.Exit(1)
 	}
 
 	conf, err := schema.LoadTediumConfig(*configFilePath, version)
 	if err != nil {
-		slog.Error("Error loading configuration", "error", err)
+		slog.Error("error loading configuration", "error", err)
 		os.Exit(1)
 	}
 

@@ -11,19 +11,19 @@ import (
 func InitChore() {
 	job, err := schema.JobFromEnvironment()
 	if err != nil {
-		slog.Error("Error getting job from environment", "error", err)
+		slog.Error("error getting job from environment", "error", err)
 		os.Exit(1)
 	}
 
 	err = git.CloneRepo(job, job.Config)
 	if err != nil {
-		slog.Error("Error cloning repo", "error", err)
+		slog.Error("error cloning repo", "error", err)
 		os.Exit(1)
 	}
 
 	err = git.CheckoutWorkBranch(job)
 	if err != nil {
-		slog.Error("Error checking out branch for chore", "error", err)
+		slog.Error("error checking out branch for chore", "error", err)
 		os.Exit(1)
 	}
 }

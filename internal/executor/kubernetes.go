@@ -30,7 +30,7 @@ type KubernetesExecutor struct {
 
 func CreateAndStart(conf schema.TediumConfig, jobQueue <-chan schema.Job, eventQueue chan<- schema.Event) error {
 	if conf.Executor.Kubernetes.Namespace == "" {
-		slog.Warn("Kubernetes executor namespace was blank - using 'default'")
+		slog.Warn("kubernetes executor namespace was blank - using 'default'")
 		conf.Executor.Kubernetes.Namespace = "default"
 	}
 
@@ -107,6 +107,7 @@ func (e *KubernetesExecutor) executeChore(job schema.Job) error {
 					RestartPolicy:                 corev1.RestartPolicyNever,
 					TerminationGracePeriodSeconds: new(int64(0)),
 					Containers: []corev1.Container{
+						// use tedium itself as the no-op step, the image will already be present
 						{
 							Name:    "finish",
 							Image:   e.conf.Images.Tedium,
