@@ -16,7 +16,7 @@ import (
 func Run(conf schema.TediumConfig) {
 	// set up queues
 	jobQueue := make(chan schema.Job, conf.Executor.ChoreConcurrency*10)
-	eventQueue := make(chan schema.Event, conf.Executor.ChoreConcurrency)
+	eventQueue := make(chan schema.Event, conf.Executor.ChoreConcurrency*10)
 
 	// setup the executor
 	slog.Info("initialising executor")
