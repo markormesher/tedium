@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	urllib "net/url"
+	"os"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/markormesher/tedium/internal/schema"
@@ -56,6 +57,14 @@ func githubPlatformFromConfig(platformConfig schema.PlatformConfig) (*GitHubPlat
 // interface methods
 
 func (p *GitHubPlatform) Init(conf schema.TediumConfig) error {
+	if p.auth.TokenFile != "" {
+		tkn, err := os.ReadFile(p.auth.TokenFile)
+		if err != nil {
+			return fmt.Errorf("error reading platform token for %s: %w", p.BaseURL, err)
+		}
+		p.auth.TokenString = string(tkn)
+	}
+
 	err := p.loadProfile()
 	if err != nil {
 		return err
@@ -104,7 +113,7 @@ func (p *GitHubPlatform) AuthToken() string {
 
 	switch p.auth.Type {
 	case schema.AuthConfigTypeUserToken:
-		return p.auth.Token
+		return p.auth.TokenString
 
 	case schema.AuthConfigTypeApp:
 		return p.auth.AppInstallationToken
@@ -165,7 +174,7 @@ func (p *GitHubPlatform) DiscoverRepos() ([]schema.Repo, error) {
 					CloneURL: cloneURL,
 					Auth: schema.RepoAuth{
 						Username: "x-access-token",
-						Password: p.auth.Token,
+						Password: p.auth.TokenString,
 					},
 					DefaultBranch: repo.DefaultBranch,
 					Archived:      repo.Archived,
@@ -487,7 +496,7 @@ func (p *GitHubPlatform) authedUserRequest() (*resty.Client, *resty.Request, err
 		return nil, nil, fmt.Errorf("error making user-authed request to GitHub: auth type is not %s", schema.AuthConfigTypeUserToken)
 	}
 
-	request.SetHeader("Authorization", fmt.Sprintf("Bearer %s", p.auth.Token))
+	request.SetHeader("Authorization", fmt.Sprintf("Bearer %s", p.auth.TokenString))
 	request.SetHeader("User-Agent", "Tedium")
 
 	return client, request, nil
