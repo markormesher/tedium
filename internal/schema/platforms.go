@@ -36,7 +36,8 @@ type AuthConfig struct {
 	Type string `json:"type" yaml:"type"`
 
 	// type: user_token
-	Token string `json:"token" yaml:"token"`
+	TokenString string `json:"tokenString" yaml:"tokenString"`
+	TokenFile   string `json:"tokenFile" yaml:"tokenFile"`
 
 	// type: app
 	ClientID             string `json:"clientID" yaml:"clientID"`

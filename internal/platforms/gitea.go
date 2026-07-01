@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	urllib "net/url"
+	"os"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/markormesher/tedium/internal/schema"
@@ -58,6 +59,14 @@ func giteaPlatformFromConfig(platformConfig schema.PlatformConfig) (*GiteaPlatfo
 // interface methods
 
 func (p *GiteaPlatform) Init(conf schema.TediumConfig) error {
+	if p.auth.TokenFile != "" {
+		tkn, err := os.ReadFile(p.auth.TokenFile)
+		if err != nil {
+			return fmt.Errorf("error reading platform token for %s: %w", p.BaseURL, err)
+		}
+		p.auth.TokenString = string(tkn)
+	}
+
 	err := p.loadProfile()
 	if err != nil {
 		return err
@@ -104,7 +113,7 @@ func (p *GiteaPlatform) AuthToken() string {
 		return ""
 	}
 
-	return p.auth.Token
+	return p.auth.TokenString
 }
 
 func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
@@ -156,7 +165,7 @@ func (p *GiteaPlatform) DiscoverRepos() ([]schema.Repo, error) {
 				Auth: schema.RepoAuth{
 					// TODO: don't forget to set this properly when app auth is supported
 					Username: "x-access-token",
-					Password: p.auth.Token,
+					Password: p.auth.TokenString,
 				},
 				DefaultBranch: repo.DefaultBranch,
 				Archived:      repo.Archived,
@@ -327,7 +336,7 @@ func (p *GiteaPlatform) authedRequest() (*resty.Client, *resty.Request) {
 	}
 
 	if p.auth.Type == schema.AuthConfigTypeUserToken {
-		request.SetHeader("Authorization", fmt.Sprintf("token %s", p.auth.Token))
+		request.SetHeader("Authorization", fmt.Sprintf("token %s", p.auth.TokenString))
 	}
 
 	if p.auth.Type == schema.AuthConfigTypeApp {
