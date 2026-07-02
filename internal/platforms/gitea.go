@@ -59,7 +59,7 @@ func giteaPlatformFromConfig(platformConfig schema.PlatformConfig) (*GiteaPlatfo
 // interface methods
 
 func (p *GiteaPlatform) Init(conf schema.TediumConfig) error {
-	if p.auth.TokenFile != "" {
+	if p.auth.TokenString == "" && p.auth.TokenFile != "" {
 		tkn, err := os.ReadFile(p.auth.TokenFile)
 		if err != nil {
 			return fmt.Errorf("error reading platform token for %s: %w", p.BaseURL, err)
