@@ -176,7 +176,10 @@ func (e *KubernetesExecutor) executeChore(job schema.Job) error {
 					slog.Info("job finished", "repo", job.Repo.FullName(), "chore", job.Chore.Name)
 
 					if e.conf.Executor.Kubernetes.DeleteSuccessfulJobs {
-						err := e.jobClient.Delete(k8sExecutorContext, k8sJob.Name, metav1.DeleteOptions{})
+						backgroundDelete := metav1.DeletePropagationBackground
+						err := e.jobClient.Delete(k8sExecutorContext, k8sJob.Name, metav1.DeleteOptions{
+							PropagationPolicy: &backgroundDelete,
+						})
 						if err != nil {
 							slog.Warn("error deleting successful job", "repo", job.Repo.FullName(), "chore", job.Chore.Name, "error", err)
 						}
