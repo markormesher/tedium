@@ -104,6 +104,10 @@ func LoadTediumConfig(configFilePath string, version string) (TediumConfig, erro
 		conf.Executor.ChoreConcurrency = 1
 	}
 
+	if conf.Executor.Kubernetes.JobTTLSeconds <= 0 {
+		conf.Executor.Kubernetes.JobTTLSeconds = 43200
+	}
+
 	// sanity checks
 
 	urlsSeen := map[string]bool{}

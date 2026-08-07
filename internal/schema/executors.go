@@ -24,6 +24,12 @@ type KubernetesConfig struct {
 
 	// Namespace defines where chores are executed. It defaults to "default".
 	Namespace string `json:"namespace" yaml:"namespace"`
+
+	// JobTTLSeconds defines the TTL assigned to exection jobs. Defaults to 43200 (12 hours).
+	JobTTLSeconds int `json:"jobTTLSeconds" yaml:"jobTTLSeconds"`
+
+	// DeleteSuccessfulJobs defines whether successful jobs should be deleted immediately.
+	DeleteSuccessfulJobs bool `json:"deleteSuccessfulJobs" yaml:"deleteSuccessfulJobs"`
 }
 
 // ExecutionStep decouples the definition of a ChoreStep from the actual execution.
