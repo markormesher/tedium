@@ -126,7 +126,7 @@ platforms:
     # Required, unless this platform will only be used to read public config files.
     auth:
       type: "user_token"
-      token: "abc123"
+      tokenFile: "/secrets/user-token"
 
 # Container images used for built-in chore steps.
 # Optional.

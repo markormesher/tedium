@@ -1,18 +1,18 @@
 module github.com/markormesher/tedium
 
-go 1.26.3
+go 1.26.0
+
+toolchain go1.26.6
 
 require (
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.36.2
-	k8s.io/apimachinery v0.36.2
-	k8s.io/client-go v0.36.2
+	k8s.io/api v0.36.4
+	k8s.io/apimachinery v0.36.4
+	k8s.io/client-go v0.36.4
 )
-
-replace github.com/cyphar/filepath-securejoin => github.com/cyphar/filepath-securejoin v0.5.0
 
 require (
 	dario.cat/mergo v1.0.2 // indirect

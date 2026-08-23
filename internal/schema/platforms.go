@@ -36,13 +36,14 @@ type AuthConfig struct {
 	Type string `json:"type" yaml:"type"`
 
 	// type: user_token
-	Token string `json:"token" yaml:"token"`
+	TokenString string `json:"tokenString" yaml:"tokenString"`
+	TokenFile   string `json:"tokenFile" yaml:"tokenFile"`
 
 	// type: app
-	ClientID             string `json:"clientId" yaml:"clientId"`
+	ClientID             string `json:"clientID" yaml:"clientID"`
 	PrivateKeyString     string `json:"privateKeyString" yaml:"privateKeyString"`
 	PrivateKeyFile       string `json:"privateKeyFile" yaml:"privateKeyFile"`
-	InstallationID       string `json:"installationId" yaml:"installationId"`
+	InstallationID       string `json:"installationID" yaml:"installationID"`
 	AppInstallationToken string `json:"doNotUse_appInstallationToken"`
 }
 

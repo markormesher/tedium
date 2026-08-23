@@ -1,4 +1,4 @@
-FROM docker.io/golang:1.26.4@sha256:68cb6d68bed024785b69195b89af7ac7a444f27791435f98647edff595aa0479 as builder
+FROM docker.io/golang:1.26.6@sha256:0d1d3a794be25f809dd2cb3160d8c73276c4056a9f8242a138e908ddeee7b6b6 as builder
 WORKDIR /app
 
 RUN apt update && apt install -y --no-install-recommends git
@@ -14,7 +14,7 @@ RUN go build -tags remote -ldflags "-X 'main.version=$(git describe --tags)'" -o
 
 # ---
 
-FROM docker.io/debian:13.5@sha256:4ae67669760b807c19f23902a3fd7c121a6a70cf2ae709035674b23e712e4d62
+FROM docker.io/debian:13.6@sha256:34cd9e9fd437c0a095ec39cb2e73422c9f30821b0d0848ed74fd0d43bae4d958
 WORKDIR /app
 
 RUN apt update \

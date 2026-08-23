@@ -95,7 +95,7 @@ func (e *KubernetesExecutor) executeChore(job schema.Job) error {
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            new(int32(0)),
-			TTLSecondsAfterFinished: new(int32(5 * 60)),
+			TTLSecondsAfterFinished: new(int32(e.conf.Executor.Kubernetes.JobTTLSeconds)),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -174,6 +174,17 @@ func (e *KubernetesExecutor) executeChore(job schema.Job) error {
 				switch cond.Type {
 				case batchv1.JobComplete:
 					slog.Info("job finished", "repo", job.Repo.FullName(), "chore", job.Chore.Name)
+
+					if e.conf.Executor.Kubernetes.DeleteSuccessfulJobs {
+						backgroundDelete := metav1.DeletePropagationBackground
+						err := e.jobClient.Delete(k8sExecutorContext, k8sJob.Name, metav1.DeleteOptions{
+							PropagationPolicy: &backgroundDelete,
+						})
+						if err != nil {
+							slog.Warn("error deleting successful job", "repo", job.Repo.FullName(), "chore", job.Chore.Name, "error", err)
+						}
+					}
+
 					return nil
 
 				case batchv1.JobFailed:
