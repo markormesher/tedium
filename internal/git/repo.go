@@ -56,7 +56,7 @@ func CheckoutWorkBranch(job schema.Job) error {
 		return fmt.Errorf("error checking repo status: %w", err)
 	}
 	if !status.IsClean() {
-		return fmt.Errorf("refusing to checkout a new branch on an unclean repo")
+		return fmt.Errorf("refusing to checkout a new branch on an unclean repo; status:\n%s", status.String())
 	}
 
 	branchExists, err := branchExists(realRepo, job.WorkBranchName)
