@@ -9,7 +9,7 @@ import (
 	"regexp"
 
 	"github.com/markormesher/tedium/internal/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // TediumConfig is passed to the Tedium executable to control its behaviour.

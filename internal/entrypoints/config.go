@@ -10,7 +10,7 @@ import (
 	"github.com/markormesher/tedium/internal/platforms"
 	"github.com/markormesher/tedium/internal/schema"
 	"github.com/markormesher/tedium/internal/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func resolveRepoConfig(_ schema.TediumConfig, targetRepo schema.Repo) (schema.ResolvedRepoConfig, error) {
